@@ -5,7 +5,7 @@ username = credentials.username
 from functionality import*
 
 def main():
-    #server, conn, curs = connect_to_db(username, password)
+    server, conn, curs = connect_to_db(username, password)
 
 
     print('Welcome to the Library, how can we help? ("help" for options)')
@@ -14,15 +14,19 @@ def main():
         tokens = user_in.split(" ")
         command = tokens[0]
 
-        if command == "help":
+        if command == "test":
+            test(conn,curs)
+        elif command == "help":
             help()
         elif command == "quit":
             print('Thanks for visiting!')
             break
         elif command == "makeaccount":
-            makeaccount(tokens)
+            makeaccount(conn,curs,tokens)
+
         else:
             print('Invalid command')
+
 
     # curs.execute("""SELECT * FROM p320_07."Book";""")
     # print(curs.fetchall())

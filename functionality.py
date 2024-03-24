@@ -1,5 +1,6 @@
 import psycopg2
 from sshtunnel import SSHTunnelForwarder
+import datetime
 
 
 def connect_to_db(username, password):
@@ -31,6 +32,7 @@ def close(server, conn, curs):
     curs.close()
 
 
+
 def help():
     print('Below are valid commands and their uses\n'
           '---------------------------\n'
@@ -41,10 +43,36 @@ def help():
           'idk'
           )
 
-def makeaccount(tokens):
+def makeaccount(conn,curs, tokens):
+
     if len(tokens)!=6:
         print('Invalid entry')
         return
 
-
     print(tokens[1:])
+
+    username = tokens[1]
+    password = tokens[2]
+    email = tokens[3]
+    fname = tokens[4]
+    lname = tokens[5]
+
+    curs.execute("""SELECT MAX(user_id) FROM p320_07."Reader";""")
+    data = curs.fetchall()
+
+    next_id = data[0][0] + 1
+    current_date = str(datetime.datetime.now())[:10]
+
+    #print(username, password, email, fname, lname, next_id)
+
+    curs.execute("""INSERT INTO p320_07."Reader"
+        (user_id, username, password, email, first_name, last_name, created_date, last_access)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
+        (next_id, username, password, email, fname, lname, current_date, current_date))
+
+
+    conn.commit()
+
+def test(conn, curs):
+    #for when you want to test stuff quickly
+    pass
