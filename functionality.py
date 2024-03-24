@@ -36,10 +36,15 @@ def help():
           '---------------------------\n'
           'help\n\tdisplays this information regardless of menu\n'
           'quit\n\texits the program regardless of menu\n'
-          'makeaccount username password email\n\tmakes a new account with specified username and password\n'
+          'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
           'idk'
           )
 
 def makeaccount(tokens):
-    print(tokens)
+    if len(tokens)!=6:
+        print('Invalid entry')
+        return
+
+
+    print(tokens[1:])
