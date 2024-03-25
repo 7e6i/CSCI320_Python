@@ -9,6 +9,7 @@ def main():
 
 
     print('Welcome to the Library, how can we help? ("help" for options)')
+    user_id = -1
     while True:
         user_in = input('>').strip()
         tokens = user_in.split(" ")
@@ -21,17 +22,22 @@ def main():
         elif command == "quit":
             print('Thanks for visiting!')
             break
+        elif command == "logout":
+            print("Logged out")
+            user_id = -1
+
+
         elif command == "makeaccount":
-            makeaccount(conn,curs,tokens)
+            user_id = makeaccount(conn,curs,tokens)
+        elif command == "login":
+            user_id = login(conn, curs, tokens)
 
         else:
             print('Invalid command')
 
 
-    # curs.execute("""SELECT * FROM p320_07."Book";""")
-    # print(curs.fetchall())
 
-    #close(server, conn, curs)
+    close(server, conn, curs)
 
 
 if __name__ == '__main__':
