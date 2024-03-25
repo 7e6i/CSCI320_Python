@@ -41,6 +41,7 @@ def help():
           'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
           'logout\n\tlogs out of current account'
+          'collection new|del name\n\tcreates or deletes collection with title name'
           )
 
 def makeaccount(conn,curs, tokens):
@@ -77,7 +78,6 @@ def makeaccount(conn,curs, tokens):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
         (next_id, username, password, email, fname, lname, current_date, current_date))
 
-
     conn.commit()
     print("New account created and logged in")
     return next_id
@@ -101,8 +101,15 @@ def login(conn, curs, tokens):
         print("Username doesn't exist or wrong password")
         return -1
 
+    user_id = users[username][0]
+    curs.execute("""UPDATE p320_07."Reader" SET last_access = %s WHERE user_id = %s;""",(datetime.datetime.now(),user_id))
+    conn.commit()
     print("Logged in")
-    return users[username][0]
+    return user_id
+
+def collection(conn, curs, tokens):
+    pass
+
 
 def test(conn, curs):
     #for when you want to test stuff quickly

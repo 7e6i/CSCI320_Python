@@ -31,6 +31,10 @@ def main():
             user_id = makeaccount(conn,curs,tokens)
         elif command == "login":
             user_id = login(conn, curs, tokens)
+        elif command == "collection":
+            if user_id<0:print("Not logged in")
+            else: collection(conn,curs,tokens)
+
 
         else:
             print('Invalid command')
