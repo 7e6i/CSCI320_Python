@@ -36,10 +36,10 @@ def main():
             else: collection(conn,curs,tokens)
         elif command == "addfriend":
             if user_id < 0: print("Not logged in")
-            addfriend(conn, curs, user_id, tokens)
+            else:addfriend(conn, curs, user_id, tokens)
         elif command == "removefriend":
             if user_id < 0: print("Not logged in")
-            removefriend(conn, curs, user_id, tokens)
+            else: removefriend(conn, curs, user_id, tokens)
 
 
         else:
