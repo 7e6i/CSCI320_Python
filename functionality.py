@@ -116,7 +116,7 @@ def addfriend(conn, curs, passed_user_id, tokens):
     friend_username = tokens[1]
     friend_id = 0;
 
-    if len(tokens)!=2 or passed_user_id < 0:
+    if len(tokens)!=2:
         print('Invalid entry')
         return
 
@@ -147,7 +147,7 @@ def removefriend(conn, curs, passed_user_id, tokens):
     friend_id_input = 0;
     friendship_exist = False;
 
-    if len(tokens)!=2 or passed_user_id < 0:
+    if len(tokens)!=2:
         print('Invalid entry')
         return
 
