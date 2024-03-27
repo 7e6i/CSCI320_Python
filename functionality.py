@@ -41,7 +41,9 @@ def help():
           'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
           'logout\n\tlogs out of current account'
-          'collection new|del name\n\tcreates or deletes collection with title name'
+          'collection new|del name\n\tcreates or deletes collection with title name\n'
+          'addfriend username friendusername\n\tadds user to friends list\n'
+          'removefriend username friendusername\n\tremoves friend from friends list'
           )
 
 def makeaccount(conn,curs, tokens):
@@ -109,6 +111,74 @@ def login(conn, curs, tokens):
 
 def collection(conn, curs, tokens):
     pass
+
+def addfriend(conn, curs, tokens):
+    username = tokens[1]
+    friend_username = tokens[2]
+    user_id = 0;
+    friend_id = 0;
+
+    if len(tokens)!=3:
+        print('Invalid entry')
+        return -1
+
+    curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
+    reader_data = curs.fetchall()
+    for reader in reader_data:
+        if username == reader[1]:
+            user_id = reader[0]
+        if friend_username == reader[1]:
+            friend_id = reader[0]
+
+    curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
+    friend_data = curs.fetchall()
+
+    for friend in friend_data:
+        if user_id == friend[0] and friend_id == friend[1]:
+            print('Already friends')
+            return -1
+
+    curs.execute("""INSERT INTO p320_07."Friendship"
+        (user_id, friend_id)
+        VALUES (%s, %s);""",
+        (user_id, friend_id))
+
+    conn.commit()
+    print("Friend added")
+
+def removefriend(conn, curs, tokens):
+    username = tokens[1]
+    friend_username = tokens[2]
+    user_id_input = 0;
+    friend_id_input = 0;
+    friendship_exist = False;
+
+    if len(tokens)!=3:
+        print('Invalid entry')
+        return -1
+
+    curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
+    reader_data = curs.fetchall()
+    for reader in reader_data:
+        if username == reader[1]:
+            user_id_input = reader[0]
+        if friend_username == reader[1]:
+            friend_id_input = reader[0]
+
+    curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
+    friend_data = curs.fetchall()
+
+    for friend in friend_data:
+        if user_id_input == friend[0] and friend_id_input == friend[1]:
+            friendship_exist = True
+
+    if friendship_exist:
+        curs.execute("""DELETE FROM p320_07."Friendship"
+                        WHERE user_id=%s;""", (user_id_input,))
+        print("Friendship was deleted")
+        conn.commit()
+    else:
+        print("No friend was found")
 
 
 def test(conn, curs):

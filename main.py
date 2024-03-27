@@ -34,6 +34,10 @@ def main():
         elif command == "collection":
             if user_id<0:print("Not logged in")
             else: collection(conn,curs,tokens)
+        elif command == "addfriend":
+            addfriend(conn, curs, tokens)
+        elif command == "removefriend":
+            removefriend(conn, curs, tokens)
 
 
         else:
