@@ -118,7 +118,14 @@ def test(conn, curs):
     users = dict()
     for user in data:
         users[user[1]] = [user[0],user[2]]
-
-
-
     print(users)
+
+def search_title(curs):
+    #add switch statement and parameter filter to search for certain things :)
+    user_title = input("Enter the title of the book you are searching for: ")
+    curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{user_title}%';""")
+    data = curs.fetchall()
+
+    for book in data:
+        print(f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}, Genre: {book[4]}\n")
+    print()
