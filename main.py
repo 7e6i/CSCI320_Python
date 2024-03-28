@@ -40,7 +40,9 @@ def main():
         elif command == "removefriend":
             if user_id < 0: print("Not logged in")
             else: removefriend(conn, curs, user_id, tokens)
-
+        elif command == "finduser":
+            if user_id < 0: print("Not logged in")
+            else: finduser(conn, curs, tokens)
 
         else:
             print('Invalid command')

@@ -184,6 +184,18 @@ def removefriend(conn, curs, passed_user_id, tokens):
     print("No friend was found")
 
 
+def finduser(conn, curs, tokens):
+    if len(tokens) != 2:
+        print('Invalid entry')
+        return
+    email = tokens[1]
+    curs.execute("""SELECT username,email FROM p320_07."Reader" WHERE user_id IN 
+            (SELECT user_id FROM p320_07."Reader" WHERE email LIKE %s);""", ('%%' + email + '%%',))
+    data = curs.fetchall()
+    print('Username\t\tEmail')
+    for user in data: print(f'{user[0]}\t\t{user[1]}')
+
+
 def test(conn, curs):
     #for when you want to test stuff quickly
     curs.execute("""SELECT user_id,username,password FROM p320_07."Reader";""")
