@@ -40,7 +40,18 @@ def main():
             elif command == "finduser":
                 if user_id < 0: print("Not logged in")
                 else: finduser(conn, curs, tokens)
-
+            elif command == "createcollection":
+                if user_id<0:print("Not logged in")
+                else:
+                    create_collection(conn, curs, tokens, user_id)
+                    print(f"\nCollection was successfully created!")
+            elif command == "addbook":
+                if user_id < 0: print("Not logged in")
+                else: add_to_collection(conn, curs, tokens, user_id)
+            elif command == "removebook":
+                if user_id < 0: print("Not logged in")
+            else: delete_from_collection(conn, curs, tokens, user_id)
+                    
             else:
                 print('Invalid command')
 
@@ -48,10 +59,7 @@ def main():
         print("You generated an error somehow")
     finally:
         close(server, conn, curs)
-
-
-
-
+        
 
 if __name__ == '__main__':
     main()
