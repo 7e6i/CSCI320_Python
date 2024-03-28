@@ -114,7 +114,8 @@ def collection(conn, curs, tokens):
 
 def addfriend(conn, curs, passed_user_id, tokens):
     friend_username = tokens[1]
-    friend_id = 0;
+    friend_id = 0
+    friend_exist = False
 
     if len(tokens)!=2:
         print('Invalid entry')
@@ -124,7 +125,12 @@ def addfriend(conn, curs, passed_user_id, tokens):
     reader_data = curs.fetchall()
     for reader in reader_data:
         if friend_username == reader[1]:
+            friend_exist = True
             friend_id = reader[0]
+    if not friend_exist:
+        print("there is no user with that username")
+        return
+
 
     curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
     friend_data = curs.fetchall()
