@@ -44,7 +44,7 @@ def main():
                 if user_id<0:print("Not logged in")
                 else:
                     create_collection(conn, curs, tokens, user_id)
-                    print(f"\nCollection was successfully created!")
+
             elif command == "addbook":
                 if user_id < 0: print("Not logged in")
                 else: add_to_collection(conn, curs, tokens, user_id)

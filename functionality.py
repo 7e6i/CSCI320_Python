@@ -117,6 +117,10 @@ def login(conn, curs, tokens):
 
 
 def create_collection(conn, curs, tokens, user_id):
+    if len(tokens) == 1:
+        print('Invalid collection name')
+        return
+
     # get the whole name including spaces
     name = ' '.join(tokens[1:])
 
@@ -136,7 +140,7 @@ def create_collection(conn, curs, tokens, user_id):
     # add to database
     conn.commit()
 
-
+    print(f"Collection was successfully created!")
 
 def add_to_collection(conn, curs, tokens, user_id):
     # get book user wants to add and the name of the collection,
