@@ -36,8 +36,8 @@ def main():
             else: collection(conn,curs,tokens)
         elif command == "read":
             if user_id<0:print("Not logged in")
+            elif len(tokens) == 2: read_random(conn,curs,tokens,user_id)
             else: read(conn,curs,tokens,user_id)
-        # doing now
         elif command == "rate":
             if user_id<0:print("Not logged in")
             else: rate(conn,curs,tokens,user_id)
