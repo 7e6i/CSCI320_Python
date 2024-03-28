@@ -2,7 +2,7 @@ import credentials
 password = credentials.password
 username = credentials.username
 
-from functionality import*
+from functionality import *
 
 def main():
     server, conn, curs = connect_to_db(username, password)
@@ -34,7 +34,12 @@ def main():
         elif command == "collection":
             if user_id<0:print("Not logged in")
             else: collection(conn,curs,tokens)
-
+        elif command == "read":
+            if user_id<0:print("Not logged in")
+            else: read(conn,curs,tokens,user_id)
+        elif command == "rate":
+            if user_id<0:print("Not logged in")
+            else: rate(conn,curs,tokens,user_id)
 
         else:
             print('Invalid command')
@@ -46,3 +51,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
