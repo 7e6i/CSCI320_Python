@@ -36,9 +36,7 @@ def main():
             else: collection(conn,curs,tokens)
 
         elif command == "search":
-            filter = input("How would you like to search? (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre\n>")
-            # search_book(conn,curs,filter)
-            search_title(curs)
+            search(curs, tokens)
 
 
         else:

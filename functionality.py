@@ -40,8 +40,8 @@ def help():
           'quit\n\texits the program regardless of menu\n'
           'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
-          'logout\n\tlogs out of current account'
-          'collection new|del name\n\tcreates or deletes collection with title name'
+          'logout\n\tlogs out of current account\n'
+          'search filter keyword(s)\n\tsearch for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre\n'
           )
 
 def makeaccount(conn,curs, tokens):
@@ -120,12 +120,63 @@ def test(conn, curs):
         users[user[1]] = [user[0],user[2]]
     print(users)
 
-def search_title(curs):
+def search(curs, tokens):
     #add switch statement and parameter filter to search for certain things :)
-    user_title = input("Enter the title of the book you are searching for: ")
-    curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{user_title}%';""")
-    data = curs.fetchall()
+    filter = tokens[1]
+    keyword = ' '.join(tokens[2:])
+    print ("filter ", filter)
+    print("\nkeyword ", keyword)
+    match filter:
+        # title
+        case 't':
+            curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
+            title_search = curs.fetchall()
+            for book in title_search:
+                print(f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}\n")
 
-    for book in data:
-        print(f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}, Genre: {book[4]}\n")
-    print()
+        # release date
+        case 'r':
+            # curs.execute(f"""SELECT * FROM p320_07."Released" WHERE date LIKE '%{keyword}%' AND book_id =
+            #                 (SELECT book_id FROM p320_07."Book" WHERE ;""")
+            curs.execute(f"""SELECT book_id FROM p320_07."Released" WHERE date LIKE '%{keyword}%'""")
+        # author
+        case 'a':
+            # curs.execute(f"""SELECT * FROM p320_07."Writes" WHERE contributor_id IN
+            #               (SELECT contributor_id FROM p320_07."Contributor" WHERE first_name LIKE '%{keyword}%');""")
+            curs.execute(f"""SELECT A.book_id FROM p320_07."Writes" A INNER JOIN p320_07."Contributor" C 
+                            ON A.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{keyword}%'""")
+            author_search = curs.fetchall()
+
+            # for all the collections the user made
+            for id in author_search:
+                for number in id:
+                    curs.execute(f"""SELECT * FROM p320_07."Book" WHERE book_id = {number}""")
+                    data = curs.fetchall()
+                    for book in data:
+                        print(f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}\n")
+
+        # publisher
+        case 'p':
+            # curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
+            curs.execute(f"""SELECT P.book_id FROM p320_07."Publishes" P INNER JOIN p320_07."Contributor" C
+                            ON P.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{keyword}%'""")
+            publisher_search = curs.fetchall()
+            for id in publisher_search:
+                for number in id:
+                    curs.execute(f"""SELECT * FROM p320_07."Book" WHERE book_id = {number}""")
+                    data = curs.fetchall()
+                    for book in data:
+                        print(f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}\n")
+        # genre
+        case 'g':
+            # curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
+            curs.execute(f"""SELECT B.book_id FROM p320_07."Book" B INNER JOIN p320_07."Genre" G 
+                            ON B.genre_id = G.genre_id WHERE G.name LIKE '%{keyword}%'; """)
+            genre_search = curs.fetchall()
+            for id in genre_search:
+                for number in id:
+                    curs.execute(f"""SELECT * FROM p320_07."Book" WHERE book_id = {number}""")
+                    data = curs.fetchall()
+                    for book in data:
+                        print(
+                            f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}\n")
