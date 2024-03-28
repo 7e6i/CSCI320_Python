@@ -112,8 +112,17 @@ def login(conn, curs, tokens):
 def collection(conn, curs, tokens):
     pass
 def read(conn, curs, tokens, user_id):
+    # Invalid if the inputted number of tokens is incorrect
     if len(tokens)!=4:
-        print('Invalid entry')
+        print('Invalid entry; incorrect number of tokens')
+        return -1
+
+    # Invalid if book id is not an integer
+    book_id = tokens[1]
+    try:
+        book_int = int(book_id)
+    except:
+        print('Invalid entry; book id must be an integer')
         return -1
 
     if tokens[2].lower() == 'start':
@@ -121,7 +130,7 @@ def read(conn, curs, tokens, user_id):
     elif tokens[2].lower() == 'stop':
         stop_reading(conn, curs, tokens, user_id)
     else:
-        print('Invalid entry')
+        print('Invalid entry; must say "start" or "stop" as the third token')
         return -1
 
 def start_reading(conn, curs, tokens, user_id):
@@ -210,9 +219,54 @@ def stop_reading(conn, curs, tokens, user_id):
 
 # still need to add
 def rate(conn, curs, tokens, user_id):
-    print(tokens[1:])
+    # Invalid if the inputted number of tokens is incorrect
+    if len(tokens)!=3:
+        print('Invalid entry; incorrect number of tokens')
+        return -1
 
-    pass
+    book_id = tokens[1]
+    rating = tokens[2]
+
+    # Invalid if book id or rating are not integers
+    try:
+        book_int = int(book_id)
+        rating_int = int(rating)
+    except:
+        print('Invalid entry; book id must be an integer')
+        return -1
+
+    # Invalid if selected book does not exist
+    curs.execute("""SELECT * FROM p320_07."Book" WHERE book_id = %s""",
+                 (book_int,))
+    data = curs.fetchall()
+    if len(data) == 0:
+        print('Invalid entry; book does not exist')
+        return -1
+
+    # Invalid if rating is out of bounds
+    if rating_int < 0 or rating_int > 5:
+        print('Invalid entry; rating must be between 0 and 5 (inclusive)')
+        return -1
+
+    # Valid, get whether or not a rating already exists for the book
+    curs.execute("""SELECT * FROM p320_07."Rates" 
+                WHERE user_id = %s AND book_id = %s""",
+                 (user_id, book_int))
+    data = curs.fetchall()
+    # If rating does not exist, create it
+    if len(data) == 0:
+        curs.execute("""INSERT INTO p320_07."Rates"
+                        (book_id, rating, user_id)
+                        VALUES (%s, %s, %s);""",
+                     (book_int, rating_int, user_id))
+        print("Rated book %s with %s stars" % (book_int, rating_int))
+    # Otherwise, update it
+    else:
+        curs.execute("""UPDATE p320_07."Rates"
+                        SET rating = %s WHERE user_id = %s AND book_id = %s;""",
+                     (rating_int, user_id, book_int))
+        print("Updated rating of book %s to %s stars" % (book_int, rating_int))
+    conn.commit()
 
 def test(conn, curs):
     #for when you want to test stuff quickly
