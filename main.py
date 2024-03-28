@@ -29,11 +29,27 @@ def main():
 
         elif command == "makeaccount":
             user_id = makeaccount(conn,curs,tokens)
+
         elif command == "login":
             user_id = login(conn, curs, tokens)
-        elif command == "collection":
+
+        elif command == "createcollection":
             if user_id<0:print("Not logged in")
-            else: collection(conn,curs,tokens)
+            else:
+                create_collection(conn, curs, tokens, user_id)
+                print(f"\nCollection was successfully created!")
+
+        elif command == "addbook":
+            if user_id < 0:
+                print("Not logged in")
+            else:
+                add_to_collection(conn, curs, tokens, user_id)
+
+        elif command == "removebook":
+            if user_id < 0:
+                print("Not logged in")
+            else:
+                delete_from_collection(conn, curs, tokens, user_id)
 
 
         else:

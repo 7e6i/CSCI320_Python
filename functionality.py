@@ -40,8 +40,10 @@ def help():
           'quit\n\texits the program regardless of menu\n'
           'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
-          'logout\n\tlogs out of current account'
-          'collection new|del name\n\tcreates or deletes collection with title name'
+          'logout\n\tlogs out of current account\n'
+          'createcollection name \n\tcreates a collection with a name\n'
+          'addbook bookid collection name \n\tadds a book to the collection\n'
+          'removebook bookid collection name \n\tremoves a book from a collection\n'
           )
 
 def makeaccount(conn,curs, tokens):
@@ -107,8 +109,113 @@ def login(conn, curs, tokens):
     print("Logged in")
     return user_id
 
-def collection(conn, curs, tokens):
-    pass
+
+
+def create_collection(conn, curs, tokens, user_id):
+    # get the whole name including spaces
+    name = ' '.join(tokens[1:])
+
+    # get the next available id
+    curs.execute("""SELECT MAX(collection_id) FROM p320_07."Collection";""")
+    data = curs.fetchall()
+    next_collection = data[0][0] + 1
+
+    # adding new collection with the collection name into Collection table
+    curs.execute(f"""INSERT INTO p320_07."Collection" (collection_id, collection_name)
+                    VALUES ({next_collection}, '{name}'); """)
+
+    # adding new instance of a collection on the Bookshelf with the current user's id
+    curs.execute(f"""INSERT INTO p320_07."Bookshelf" (user_id, collection_id)
+                    VALUES ({user_id}, {next_collection}); """)
+
+    # add to database
+    conn.commit()
+
+
+
+def add_to_collection(conn, curs, tokens, user_id):
+    # get book user wants to add and the name of the collection,
+    add_book = int(tokens[1])
+    collection_name = ' '.join(tokens[2:])  # should be spelled EXACTLY like in the database
+
+    #   figure out collection id with the name they inputted
+    curs.execute(f"""SELECT collection_id FROM p320_07."Collection" WHERE collection_name = '{collection_name}'""")
+    collection_id = curs.fetchall()
+
+    #   if the collection doesn't exist with that name
+    if len(collection_id) == 0:
+        print(f"\nCannot find collection named {collection_name}.")
+        return
+
+    # see what the users collections are
+    curs.execute(f"""SELECT collection_id FROM p320_07."Bookshelf" WHERE user_id = {user_id} """)
+    data = curs.fetchall()
+
+    # if the book is added, it will be made to True in the loop, used for later if unsuccessful to add
+    added = False
+
+    # for all the collections the user made
+    for id in data:
+        # if they have the collection we want to add to
+        if id in collection_id:
+            # get the collection id from the tuple id
+            for number in id:
+                try:
+                    # try to add the book to the Collection
+                    curs.execute(f"""INSERT INTO p320_07."CollectionContains" (book_id, collection_id) 
+                                    VALUES ({add_book}, {number}); """)
+                except Exception as e:
+                    print("\nThis book is already in the Collection or it does not exist!")
+                    conn.rollback() # clear SQL query
+                    return
+
+                else:
+                    # book was added successfully
+                    print(f"Added Book with id {add_book} to {collection_name}.")
+                    added = True
+                break
+
+    if not added:
+        print(f"\nYou do not own this Collection!")
+        return
+
+    # will only commit if everything passes
+    conn.commit()
+
+
+
+def delete_from_collection(conn, curs, tokens, user_id):
+    # get book user wants to remove and the name of the collection,
+    remove_book = int(tokens[1])
+    collection_name = ' '.join(tokens[2:])  # should be spelled EXACTLY like in the database
+
+    # figure out collection id with the name they inputted
+    curs.execute(f"""SELECT collection_id FROM p320_07."Collection" WHERE collection_name = '{collection_name}'""")
+    collection_id = curs.fetchall()
+
+    # if the collection doesn't exist with that name
+    if len(collection_id) == 0:
+        print(f"\nCannot find collection named {collection_name}.")
+        return
+
+    # see what the users collections are
+    curs.execute(f"""SELECT collection_id FROM p320_07."Bookshelf" WHERE user_id = {user_id} """)
+    data = curs.fetchall()
+
+    # for all the collections the user made
+    for id in data:
+        # if they have the collection we want to add to
+        if id in collection_id:
+            # get the collection id from the tuple id
+            for number in id:
+                curs.execute(f"""DELETE FROM p320_07."CollectionContains" WHERE book_id = {remove_book} 
+                                AND collection_id = {number} """)
+
+    print(f"\n Book #{remove_book} was removed from {collection_name} or it was not previously in the Collection")
+
+    # will only commit if everything passes
+    conn.commit()
+
 
 
 def test(conn, curs):
@@ -118,7 +225,5 @@ def test(conn, curs):
     users = dict()
     for user in data:
         users[user[1]] = [user[0],user[2]]
-
-
 
     print(users)
