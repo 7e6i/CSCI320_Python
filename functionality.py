@@ -215,17 +215,21 @@ def delete_from_collection(conn, curs, tokens, user_id):
 
 
 def delete_collection(conn, curs, tokens, user_id):
+    # gets the name of the collection the user wishes to delete
     name_of_collection = ' '.join(tokens[1:])
 
+    # determine the collection id of the named collection
     curs.execute(f"""SELECT a.collection_id FROM p320_07."Collection" a INNER JOIN p320_07."Bookshelf" B on 
                      a.collection_id = B.collection_id WHERE B.user_id = {user_id} 
                      AND a.collection_name = {name_of_collection}""")
     collection_id = curs.fetchall()
 
+    # returns fail message if collection cannot be found
     if len(collection_id) == 0:
         print(f"\nCannot find Collection: {name_of_collection}.")
         return
 
+    # for the located id of the determine collection, delete said collection from all tables containing it
     for id in collection_id:
         id = id[0]
         curs.execute(f"""DELETE FROM p320_07."Collection" WHERE collection_id = {id}""")
@@ -234,17 +238,22 @@ def delete_collection(conn, curs, tokens, user_id):
 
     print(f"\n Collection: #{name_of_collection} was deleted.")
 
+    # only commits if everything passes
     conn.commit()
 
 
 def view_collections(conn, curs, user_id):
+    # displays the collection of the given user_id
     curs.execute(f"""SELECT a.collection_name FROM p320_07."Collection" a 
                      INNER JOIN p320_07."Bookshelf" B on a.collection_id = B.collection_id 
                      WHERE B.user_id = {user_id}""")
+
+    # only commits if everything passes
     conn.commit()
 
 
 def edit_collection_name(conn, curs, tokens, user_id):
+    # gets the name of the collection the user wishes to change the name of, and the new name
     collection_name = ' '.join(tokens[1:])
     new_name = ' '.join(tokens[2:])
 
@@ -252,9 +261,12 @@ def edit_collection_name(conn, curs, tokens, user_id):
                      FROM p320_07."Bookshelf" b WHERE collection_name = {collection_name} 
                      AND b.user_id = {user_id}""")
 
+    # returns fail message if collection name cannot be found
     if len(tokens) == 2:
         print(f"\nError. Please enter both a collection name and a replacement name.")
         return
+
+    # only commits if everything passes
     conn.commit()
 
 
