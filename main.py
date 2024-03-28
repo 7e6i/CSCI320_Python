@@ -50,7 +50,7 @@ def main():
                 else: add_to_collection(conn, curs, tokens, user_id)
             elif command == "removebook":
                 if user_id < 0: print("Not logged in")
-            else: delete_from_collection(conn, curs, tokens, user_id)
+                else: delete_from_collection(conn, curs, tokens, user_id)
                     
             else:
                 print('Invalid command')
