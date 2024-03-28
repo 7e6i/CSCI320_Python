@@ -32,7 +32,6 @@ def close(server, conn, curs):
     curs.close()
 
 
-
 def help():
     print('Below are valid commands and their uses\n'
           '---------------------------\n'
@@ -46,13 +45,14 @@ def help():
           'removebook bookid collection name \n\tremoves a book from a collection\n'
           )
 
+
 def makeaccount(conn,curs, tokens):
 
     if len(tokens)!=6:
         print('Invalid entry')
         return -1
 
-    #print(tokens[1:])
+    # print(tokens[1:])
 
     username = tokens[1]
     password = tokens[2]
@@ -110,7 +110,6 @@ def login(conn, curs, tokens):
     return user_id
 
 
-
 def create_collection(conn, curs, tokens, user_id):
     # get the whole name including spaces
     name = ' '.join(tokens[1:])
@@ -130,7 +129,6 @@ def create_collection(conn, curs, tokens, user_id):
 
     # add to database
     conn.commit()
-
 
 
 def add_to_collection(conn, curs, tokens, user_id):
@@ -183,7 +181,6 @@ def add_to_collection(conn, curs, tokens, user_id):
     conn.commit()
 
 
-
 def delete_from_collection(conn, curs, tokens, user_id):
     # get book user wants to remove and the name of the collection,
     remove_book = int(tokens[1])
@@ -217,9 +214,52 @@ def delete_from_collection(conn, curs, tokens, user_id):
     conn.commit()
 
 
+def delete_collection(conn, curs, tokens, user_id):
+    name_of_collection = ' '.join(tokens[1:])
+
+    curs.execute(f"""SELECT a.collection_id FROM p320_07."Collection" a INNER JOIN p320_07."Bookshelf" B on 
+                     a.collection_id = B.collection_id WHERE B.user_id = {user_id} 
+                     AND a.collection_name = {name_of_collection}""")
+    collection_id = curs.fetchall()
+
+    if len(collection_id) == 0:
+        print(f"\nCannot find Collection: {name_of_collection}.")
+        return
+
+    for id in collection_id:
+        id = id[0]
+        curs.execute(f"""DELETE FROM p320_07."Collection" WHERE collection_id = {id}""")
+        curs.execute(f"""DELETE FROM p320_07."CollectionContains" WHERE collection_id = {id}""")
+        curs.execute(f"""DELETE FROM p320_07."Bookshelf" WHERE collection_id = {id}""")
+
+    print(f"\n Collection: #{name_of_collection} was deleted.")
+
+    conn.commit()
+
+
+def view_collections(conn, curs, user_id):
+    curs.execute(f"""SELECT a.collection_name FROM p320_07."Collection" a 
+                     INNER JOIN p320_07."Bookshelf" B on a.collection_id = B.collection_id 
+                     WHERE B.user_id = {user_id}""")
+    conn.commit()
+
+
+def edit_collection_name(conn, curs, tokens, user_id):
+    collection_name = ' '.join(tokens[1:])
+    new_name = ' '.join(tokens[2:])
+
+    curs.execute(f"""UPDATE p320_07."Collection" SET collection_name = {new_name} 
+                     FROM p320_07."Bookshelf" b WHERE collection_name = {collection_name} 
+                     AND b.user_id = {user_id}""")
+
+    if len(tokens) == 2:
+        print(f"\nError. Please enter both a collection name and a replacement name.")
+        return
+    conn.commit()
+
 
 def test(conn, curs):
-    #for when you want to test stuff quickly
+    # for when you want to test stuff quickly
     curs.execute("""SELECT user_id,username,password FROM p320_07."Reader";""")
     data = curs.fetchall()
     users = dict()

@@ -2,11 +2,11 @@ import credentials
 password = credentials.password
 username = credentials.username
 
-from functionality import*
+from functionality import *
+
 
 def main():
     server, conn, curs = connect_to_db(username, password)
-
 
     print('Welcome to the Library, how can we help? ("help" for options)')
     user_id = -1
@@ -25,7 +25,6 @@ def main():
         elif command == "logout":
             print("Logged out")
             user_id = -1
-
 
         elif command == "makeaccount":
             user_id = makeaccount(conn,curs,tokens)
@@ -51,11 +50,27 @@ def main():
             else:
                 delete_from_collection(conn, curs, tokens, user_id)
 
+        elif command == "deletecollection":
+            if user_id < 0:
+                print("Not logged in")
+            else:
+                delete_collection(conn, curs, tokens, user_id)
+
+        elif command == "viewcollections":
+            if user_id < 0:
+                print("Not logged in")
+            else:
+                view_collections(conn, curs, user_id)
+
+        elif command == "editcollectionname":
+            if user_id < 0:
+                print("Not logged in")
+            else:
+                edit_collection_name(conn, curs, tokens, user_id)
+
 
         else:
             print('Invalid command')
-
-
 
     close(server, conn, curs)
 
