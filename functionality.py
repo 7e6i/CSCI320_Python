@@ -40,10 +40,10 @@ def help():
           'quit\n\texits the program regardless of menu\n'
           'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
-          'logout\n\tlogs out of current account'
-          'collection new|del name\n\tcreates or deletes collection with title name\n'
-          'addfriend: friendusername\n\tadds user to friends list\n'
-          'removefriend: friendusername\n\tremoves friend from friends list'
+          'logout\n\tlogs out of current account\n'
+          'addfriend username\n\tadds user to friends list\n'
+          'removefriend username\n\tremoves friend from friends list\n'
+          'finduser email\n\treturns users with similar email'
           )
 
 def makeaccount(conn,curs, tokens):
@@ -108,10 +108,6 @@ def login(conn, curs, tokens):
     conn.commit()
     print("Logged in")
     return user_id
-
-
-def collection(conn, curs, tokens):
-    pass
 
 
 def addfriend(conn, curs, passed_user_id, tokens):
