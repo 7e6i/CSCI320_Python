@@ -208,6 +208,7 @@ def stop_reading(conn, curs, tokens, user_id):
     conn.commit()
     print("Stopped reading session, pages %s->%s" % (start_int, end_int))
 
+# still need to add
 def rate(conn, curs, tokens, user_id):
     print(tokens[1:])
 

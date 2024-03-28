@@ -37,6 +37,7 @@ def main():
         elif command == "read":
             if user_id<0:print("Not logged in")
             else: read(conn,curs,tokens,user_id)
+        # doing now
         elif command == "rate":
             if user_id<0:print("Not logged in")
             else: rate(conn,curs,tokens,user_id)
