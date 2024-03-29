@@ -251,9 +251,27 @@ def view_collections(curs, user_id):
                      INNER JOIN p320_07."Bookshelf" B on a.collection_id = B.collection_id 
                      WHERE B.user_id = {user_id}""")
     collections = curs.fetchall()
-    for i in collections:
-        for x in i:
-            print(x)
+    for tuple in collections:
+        collection = tuple[0]
+
+        # get collection_id
+        curs.execute("""SELECT collection_id FROM p320_07."Collection" WHERE collection_name = %s""", (collection,))
+        data = curs.fetchall()
+        collection_id = data[0][0]
+
+        # get all books in collection and count number of them
+        curs.execute("""SELECT book_id FROM p320_07."CollectionContains"
+                        WHERE collection_id = %s""", (collection_id,))
+        collection_books = curs.fetchall()
+        book_count = len(collection_books)
+
+        # get all pages in each book and sum them all up
+        total_pages = 0
+        for book_id in collection_books:
+            curs.execute("""SELECT length FROM p320_07."Book" WHERE book_id = %s""", (book_id,))
+            total_pages += curs.fetchall()[0][0]
+
+        print(collection + ": [" + str(book_count) + " books, " + str(total_pages) + " pages total]")
 
 
 def edit_collection_name(conn, curs, user_id):
