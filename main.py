@@ -97,7 +97,10 @@ def main():
                 print("Not logged in")
             else:
                 rate(conn,curs,tokens,user_id)
-              
+                
+        elif command == "search":
+            search(curs, tokens)
+            
         else:
             print('Invalid command')
 
