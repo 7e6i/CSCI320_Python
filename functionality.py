@@ -53,6 +53,10 @@ def help():
           'editcollectionname \n\tedits entered collection name to entered new name\n'
           'addbook bookid collection name \n\tadds a book to the collection\n'
           'removebook bookid collection name \n\tremoves a book from a collection\n'
+          '========= READ/RATE =========\n'
+          'read bookid start|stop page\n\tstart or stop a book reading session given page number\n'
+          'read collectionid\n\tstart reading a random book in a collection at page 0\n'
+          'rate bookid rating\n\trate a book between 1 and 5 stars'
           )
 
 
@@ -119,7 +123,7 @@ def login(conn, curs, tokens):
     print("Logged in")
     return user_id
 
-  
+
 def addfriend(conn, curs, passed_user_id, tokens):
     if len(tokens) != 2:
         print('Invalid entry')
@@ -400,6 +404,224 @@ def edit_collection_name(conn, curs, user_id):
     if not updated:
         print("You do not own this collection or it does not exist!")
 
+        
+def read(conn, curs, tokens, user_id):
+    # Invalid if the inputted number of tokens is incorrect
+    if len(tokens) != 4:
+        print('Invalid entry; incorrect number of tokens')
+        return -1
+
+    # Invalid if book id is not an integer
+    book_id = tokens[1]
+    try:
+        book_int = int(book_id)
+    except:
+        print('Invalid entry; book id must be an integer')
+        return -1
+
+    if tokens[2].lower() == 'start':
+        start_reading(conn, curs, tokens, user_id)
+    elif tokens[2].lower() == 'stop':
+        stop_reading(conn, curs, tokens, user_id)
+    else:
+        print('Invalid entry; must say "start" or "stop" as the third token')
+        return -1
+
+      
+def start_reading(conn, curs, tokens, user_id):
+    book_id = tokens[1]
+    start_page = tokens[3]
+
+    # Invalid if the starting page is not an integer
+    try:
+        start_int = int(start_page)
+    except:
+        print('Invalid entry; page must be an integer')
+        return -1
+
+    # Invalid if the starting page is negative
+    if start_int < 0:
+        print('Invalid entry; page must be positive')
+        return -1
+
+    # Invalid if selected book does not exist
+    curs.execute("""SELECT * FROM p320_07."Book" WHERE book_id = %s""",
+                 (book_id,))
+    data = curs.fetchall()
+    if len(data) == 0:
+        print('Invalid entry; book does not exist')
+        return -1
+
+    # Invalid if ongoing reading session exists on that book
+    curs.execute("""SELECT * FROM p320_07."Reads" 
+                WHERE user_id = %s AND book_id = %s AND end_time IS NULL;""",
+                 (user_id, book_id))
+    data = curs.fetchall()
+    if len(data) > 0:
+        print('Invalid entry; A reading session for this book and user already exists.')
+        return -1
+
+    # Valid, create a new reading session with null ending values
+    start_time = datetime.datetime.now()
+    curs.execute("""INSERT INTO p320_07."Reads"
+                (user_id, book_id, start_time, end_time, start_page, end_page)
+                VALUES (%s, %s, %s, NULL, %s, NULL);""",
+                 (user_id, book_id, start_time, start_int))
+
+    conn.commit()
+    print("Started reading session at page %s" % start_page)
+
+    
+def stop_reading(conn, curs, tokens, user_id):
+    book_id = tokens[1]
+    end_page = tokens[3]
+
+    # Invalid if there doesn't exist a reading session with the user and book
+    # Invalid if there are multiple reading sessions with the user and book
+    curs.execute("""SELECT start_page FROM p320_07."Reads" 
+                WHERE user_id = %s AND book_id = %s AND end_page IS NULL""",
+                (user_id, book_id))
+    data = curs.fetchall()
+    if len(data) == 0:
+        print('Invalid entry; reading session for book has not been started yet')
+        return -1
+    if len(data) > 1:
+        print('Invalid entry; too many reading sessions for book (fix directly by deleting one)')
+        return -1
+
+    start_page = data[0][0]
+
+    # Invalid if the starting page or the ending page are not integers
+    try:
+        start_int = int(start_page)
+        end_int = int(end_page)
+    except:
+        print('Invalid entry; page must be an integer')
+        return -1
+
+    # Invalid if the ending page is negative
+    if end_int < 0:
+        print('Invalid entry; page must be positive')
+        return -1
+      
+    # Valid, update the reading session with new ending values
+    end_time = datetime.datetime.now()
+    curs.execute("""UPDATE p320_07."Reads"
+                SET end_time = %s, end_page = %s WHERE user_id = %s AND book_id = %s AND end_time IS NULL;""",
+                (end_time, end_int, user_id, book_id))
+
+    conn.commit()
+    print("Stopped reading session, pages %s->%s" % (start_int, end_int))
+
+    
+def read_random(conn, curs, tokens, user_id):
+    # Invalid if collection id is not an integer
+    collection_id = tokens[1]
+    try:
+        collection_int = int(collection_id)
+    except:
+        print('Invalid entry; collection id must be an integer')
+        return -1
+
+    # Invalid if selected collection does not exist
+    curs.execute("""SELECT * FROM p320_07."Collection" WHERE collection_id = %s""",
+                 (collection_int,))
+    data = curs.fetchall()
+    if len(data) == 0:
+        print('Invalid entry; collection does not exist')
+        return -1
+
+    # Invalid if no books exist in the collection
+    curs.execute("""SELECT * FROM p320_07."CollectionContains" WHERE collection_id = %s""",
+                 (collection_int,))
+    data = curs.fetchall()
+    if len(data) == 0:
+        print('Invalid entry; no books exist in collection')
+        return -1
+
+    # Valid, select random book from collection until it doesn't already have an ongoing reading session
+    valid_book_found = False
+    rate_limit = 0
+    book_id = 0
+    while not valid_book_found and rate_limit < 100:
+        curs.execute("""SELECT book_id FROM p320_07."CollectionContains" WHERE collection_id = %s
+                                ORDER BY RANDOM() LIMIT 1;""", (collection_int,))
+        result = curs.fetchall()
+
+        book_id = result[0][0]
+
+        # Invalid if ongoing reading session exists on that book
+        curs.execute("""SELECT * FROM p320_07."Reads" 
+                        WHERE user_id = %s AND book_id = %s AND end_time IS NULL;""",
+                     (user_id, book_id))
+        data = curs.fetchall()
+        if len(data) == 0:
+            valid_book_found = True
+        rate_limit = rate_limit + 1
+
+    if rate_limit >= 100:
+        print('Invalid entry; all books in collection are already being read')
+    else:
+        # Create a new reading session with null ending values and default start page of 0
+        start_time = datetime.datetime.now()
+        curs.execute("""INSERT INTO p320_07."Reads"
+                        (user_id, book_id, start_time, end_time, start_page, end_page)
+                        VALUES (%s, %s, %s, NULL, %s, NULL);""",
+                     (user_id, book_id, start_time, 0))
+        print("Started reading session of book %s at page %s" % (book_id, 0))
+
+    conn.commit()
+
+    
+def rate(conn, curs, tokens, user_id):
+    # Invalid if the inputted number of tokens is incorrect
+    if len(tokens)!=3:
+        print('Invalid entry; incorrect number of tokens')
+        return -1
+
+    book_id = tokens[1]
+    rating = tokens[2]
+
+    # Invalid if book id or rating are not integers
+    try:
+        book_int = int(book_id)
+        rating_int = int(rating)
+    except:
+        print('Invalid entry; book id and rating must be integers')
+        return -1
+
+    # Invalid if selected book does not exist
+    curs.execute("""SELECT * FROM p320_07."Book" WHERE book_id = %s""",
+                 (book_int,))
+    data = curs.fetchall()
+    if len(data) == 0:
+        print('Invalid entry; book does not exist')
+        return -1
+
+    # Invalid if rating is out of bounds
+    if rating_int < 0 or rating_int > 5:
+        print('Invalid entry; rating must be between 0 and 5 (inclusive)')
+        return -1
+
+    # Valid, get whether or not a rating already exists for the book
+    curs.execute("""SELECT * FROM p320_07."Rates" 
+                WHERE user_id = %s AND book_id = %s""",
+                 (user_id, book_int))
+    data = curs.fetchall()
+    # If rating does not exist, create it
+    if len(data) == 0:
+        curs.execute("""INSERT INTO p320_07."Rates"
+                        (book_id, rating, user_id)
+                        VALUES (%s, %s, %s);""",
+                     (book_int, rating_int, user_id))
+        print("Rated book %s with %s stars" % (book_int, rating_int))
+    # Otherwise, update it
+    else:
+        curs.execute("""UPDATE p320_07."Rates"
+                        SET rating = %s WHERE user_id = %s AND book_id = %s;""",
+                     (rating_int, user_id, book_int))
+        print("Updated rating of book %s to %s stars" % (book_int, rating_int))
+    conn.commit()
 
 def test(conn, curs):
     # for when you want to test stuff quickly

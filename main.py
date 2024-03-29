@@ -83,7 +83,21 @@ def main():
                 print("Not logged in")
             else:
                 edit_collection_name(conn, curs, user_id)
-
+        
+        elif command == "read":
+            if user_id<0:
+                print("Not logged in")
+            elif len(tokens) == 2:
+                read_random(conn,curs,tokens,user_id)
+            else:
+                read(conn,curs,tokens,user_id)
+                
+        elif command == "rate":
+            if user_id<0:
+                print("Not logged in")
+            else:
+                rate(conn,curs,tokens,user_id)
+              
         else:
             print('Invalid command')
 
