@@ -4,7 +4,6 @@ username = credentials.username
 
 from functionality import *
 
-
 def main():
     server, conn, curs = connect_to_db(username, password)
 
@@ -89,11 +88,6 @@ def main():
             print('Invalid command')
 
     close(server, conn, curs)
-
-    except:
-        print("You generated an error somehow")
-    finally:
-        close(server, conn, curs)
         
 if __name__ == '__main__':
     main()

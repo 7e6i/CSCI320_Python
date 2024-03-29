@@ -120,7 +120,7 @@ def login(conn, curs, tokens):
     return user_id
 
   
- def addfriend(conn, curs, passed_user_id, tokens):
+def addfriend(conn, curs, passed_user_id, tokens):
     if len(tokens) != 2:
         print('Invalid entry')
         return
