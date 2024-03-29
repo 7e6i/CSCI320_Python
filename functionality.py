@@ -44,8 +44,8 @@ def help():
           'addbook bookid collection name \n\tadds a book to the collection\n'
           'removebook bookid collection name \n\tremoves a book from a collection\n'
           'deletecollection \n\tdeletes entered collection from database\n'
-          'viewcollections \n\tviews all collections of the logged in user'
-          'editcollectionname \n\tedits entered collection name to entered new name'
+          'viewcollections \n\tviews all collections of the logged in user\n'
+          'editcollectionname \n\tedits entered collection name to entered new name\n'
           )
 
 
@@ -257,16 +257,35 @@ def view_collections(curs, user_id):
 
 
 def edit_collection_name(conn, curs, user_id):
-    # gets the name of the collection the user wishes to change the name of, and the new name
-    collection_name = input("Enter the name of the collection you want to change:")
-    new_name = input("Enter the new name:")
+    # get the original collection name from input
+    collection_name = input("Enter your collection name: ")
+    new_name = input("Enter the new name for your collection: ")
 
-    curs.execute(f"""UPDATE p320_07."Collection" SET collection_name = '{new_name}' 
-                     FROM p320_07."Bookshelf" b WHERE collection_name = '{collection_name}' 
-                     AND b.user_id = {user_id}""")
+    updated = False
 
-    # only commits if everything passes
-    conn.commit()
+    # strip the inputs to remove the \n
+    curs.execute(
+        f"""SELECT collection_id FROM p320_07."Collection" WHERE collection_name = '{collection_name.strip()}'""")
+    collection_id = curs.fetchall()
+
+    for collections in collection_id:
+
+        curs.execute(f"""SELECT user_id FROM p320_07."Bookshelf" WHERE collection_id = {collections[0]}""")
+        check_id = curs.fetchall()
+
+        # checking if they own the collection
+        for id in check_id:
+            if id[0] == user_id:
+                # update collection
+                curs.execute(f"""UPDATE p320_07."Collection" SET collection_name = '{new_name.strip()}' 
+                                 FROM p320_07."Bookshelf" b WHERE collection_name = '{collection_name.strip()}' 
+                                 AND b.user_id = {user_id}""")
+                updated = True
+                print(f"Successfully Changed Collection name from {collection_name} to {new_name}")
+                conn.commit()
+
+    if not updated:
+        print("You do not own this collection or it does not exist!")
 
 
 def test(conn, curs):
