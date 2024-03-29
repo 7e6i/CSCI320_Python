@@ -5,9 +5,9 @@ import datetime
 
 def connect_to_db(username, password):
     server = SSHTunnelForwarder(('starbug.cs.rit.edu', 22),
-                            ssh_username=username,
-                            ssh_password=password,
-                            remote_bind_address=('127.0.0.1', 5432))
+                                ssh_username=username,
+                                ssh_password=password,
+                                remote_bind_address=('127.0.0.1', 5432))
 
     server.start()
     print("SSH tunnel established")
@@ -32,7 +32,6 @@ def close(server, conn, curs):
     curs.close()
 
 
-
 def help():
     print('Below are valid commands and their uses\n'
           '---------------------------\n'
@@ -44,13 +43,13 @@ def help():
           'search filter keyword(s)\n\tsearch for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre\n'
           )
 
-def makeaccount(conn,curs, tokens):
 
-    if len(tokens)!=6:
+def makeaccount(conn, curs, tokens):
+    if len(tokens) != 6:
         print('Invalid entry')
         return -1
 
-    #print(tokens[1:])
+    # print(tokens[1:])
 
     username = tokens[1]
     password = tokens[2]
@@ -71,12 +70,12 @@ def makeaccount(conn,curs, tokens):
     next_id = data[0][0] + 1
     current_date = datetime.datetime.now()
 
-    #print(username, password, email, fname, lname, next_id)
+    # print(username, password, email, fname, lname, next_id)
 
     curs.execute("""INSERT INTO p320_07."Reader"
         (user_id, username, password, email, first_name, last_name, created_date, last_access)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
-        (next_id, username, password, email, fname, lname, current_date, current_date))
+                 (next_id, username, password, email, fname, lname, current_date, current_date))
 
     conn.commit()
     print("New account created and logged in")
@@ -87,7 +86,7 @@ def login(conn, curs, tokens):
     username = tokens[1]
     password = tokens[2]
 
-    if len(tokens)!=3:
+    if len(tokens) != 3:
         print('Invalid entry')
         return -1
 
@@ -102,23 +101,26 @@ def login(conn, curs, tokens):
         return -1
 
     user_id = users[username][0]
-    curs.execute("""UPDATE p320_07."Reader" SET last_access = %s WHERE user_id = %s;""",(datetime.datetime.now(),user_id))
+    curs.execute("""UPDATE p320_07."Reader" SET last_access = %s WHERE user_id = %s;""",
+                 (datetime.datetime.now(), user_id))
     conn.commit()
     print("Logged in")
     return user_id
+
 
 def collection(conn, curs, tokens):
     pass
 
 
 def test(conn, curs):
-    #for when you want to test stuff quickly
+    # for when you want to test stuff quickly
     curs.execute("""SELECT user_id,username,password FROM p320_07."Reader";""")
     data = curs.fetchall()
     users = dict()
     for user in data:
-        users[user[1]] = [user[0],user[2]]
+        users[user[1]] = [user[0], user[2]]
     print(users)
+
 
 def search(curs, tokens):
     filter = tokens[1]
@@ -128,24 +130,37 @@ def search(curs, tokens):
 
         # title --------
         case 't':
-            curs.execute(f"""SELECT book_id FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
-            title_search = curs.fetchall()
+            curs.execute(f"""SELECT DISTINCT p320_07."Book".book_id , p320_07."Book".title , p320_07."Released".date
+            FROM p320_07."Book" JOIN p320_07."Released" ON p320_07."Book".book_id = p320_07."Released".book_id
+            WHERE title LIKE '%{keyword}%' ORDER BY  p320_07."Book".title ASC, p320_07."Released".date ASC;""")
+            querys = curs.fetchall()
+            title_search = list()
 
-            if len(title_search) == 0:
+            if len(querys) == 0:
                 print("Could not find a Book with that Title!")
                 return
 
-            print_book(curs,title_search)
+            for query in querys:
+                title_search.append((query[0],))
+
+            print_book(curs, title_search)
 
         # release date --------
         case 'r':
             # not working properly, can only search by whole date YYYY-MM-DD
-            curs.execute(f"""SELECT book_id FROM p320_07."Released" WHERE date = '{keyword}'""")
-            released_search = curs.fetchall()
+            curs.execute(f"""SELECT DISTINCT p320_07."Released".book_id, p320_07."Book".title, p320_07."Released".date
+            FROM p320_07."Released" JOIN p320_07."Book"  
+            ON p320_07."Released".book_id = p320_07."Book".book_id WHERE date = '{keyword}'
+            ORDER BY  p320_07."Book".title ASC, p320_07."Released".date ASC;""")
+            querys = curs.fetchall()
+            released_search = list()
 
-            if len(released_search) == 0:
-                print("Could not find a Book released on that Date!")
+            if len(querys) == 0:
+                print("Could not find a Book with that release date!")
                 return
+
+            for query in querys:
+                released_search.append((query[0],))
 
             print_book(curs, released_search)
 
@@ -159,17 +174,27 @@ def search(curs, tokens):
             if len(tokens) > 3:
                 last_name = keyword.split()[1]
 
-            curs.execute(f"""SELECT A.book_id FROM p320_07."Writes" A INNER JOIN p320_07."Contributor" C 
-                            ON A.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{first_name}%' 
-                            OR C.last_name LIKE '%{last_name}%';""")
-            author_search = curs.fetchall()
+            curs.execute(f"""SELECT DISTINCT  A.book_id , B.title, R.date 
+                        FROM p320_07."Writes" A JOIN p320_07."Contributor" C 
+                            ON A.contributor_id = C.contributor_id JOIN p320_07."Book" B
+                            ON A.book_id = B.book_id JOIN p320_07."Released" R
+                            ON A.book_id = R.book_id WHERE C.first_name LIKE '%{first_name}%' 
+                            OR C.last_name LIKE '%{last_name}%' 
+                            ORDER BY B.title ASC, R.date ASC;""")
+            querys = curs.fetchall()
+            author_search = list()
 
-            if len(author_search) == 0:
-                print("Could not find Author with that Name!")
+            if len(querys) == 0:
+                print("Could not find a Author with that name!")
                 return
 
+            for query in querys:
+                if (query[0],) in author_search:
+                    pass
+                else:
+                    author_search.append((query[0],))
             # for all the collections the user made
-            print_book(curs,author_search)
+            print_book(curs, author_search)
 
         # publisher --------
         case 'p':
@@ -181,27 +206,50 @@ def search(curs, tokens):
             if len(tokens) > 3:
                 last_name = keyword.split()[1]
 
-            curs.execute(f"""SELECT P.book_id FROM p320_07."Publishes" P INNER JOIN p320_07."Contributor" C
-                            ON P.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{first_name}%' 
-                            OR C.last_name LIKE '%{last_name}%'""")
-            publisher_search = curs.fetchall()
+            curs.execute(f"""SELECT P.book_id, B.title, R.date FROM p320_07."Publishes" P 
+                            INNER JOIN p320_07."Contributor" C
+                            ON P.contributor_id = C.contributor_id LEFT JOIN p320_07."Book" B
+                            ON P.book_id = B.book_id LEFT JOIN p320_07."Released" R
+                            ON P.book_id = R.book_id
+                            WHERE C.first_name LIKE '%{first_name}%' 
+                            OR C.last_name LIKE '%{last_name}%'
+                            ORDER BY B.title ASC, R.date ASC;""")
+            querys = curs.fetchall()
+            publisher_search = list()
 
-            if len(publisher_search) == 0:
-                print("Could not find Publisher with that Name!")
+            if len(querys) == 0:
+                print("Could not find a Publisher with that name!")
                 return
+
+            for query in querys:
+                if (query[0],) in publisher_search:
+                    pass
+                else:
+                    publisher_search.append((query[0],))
 
             print_book(curs, publisher_search)
 
         # genre --------
         case 'g':
 
-            curs.execute(f"""SELECT B.book_id FROM p320_07."Book" B INNER JOIN p320_07."Genre" G 
-                            ON B.genre_id = G.genre_id WHERE G.name LIKE '%{keyword}%'; """)
-            genre_search = curs.fetchall()
+            curs.execute(f"""SELECT B.book_id, B.title, R.date FROM p320_07."Book" B 
+                            INNER JOIN p320_07."Genre" G 
+                            ON B.genre_id = G.genre_id LEFT JOIN p320_07."Released" R
+                            ON B.book_id = R.book_id
+                            WHERE G.name LIKE '%{keyword}%'
+                            ORDER BY B.title ASC, R.date ASC; """)
+            querys = curs.fetchall()
+            genre_search = list()
 
-            if len(genre_search) == 0:
-                print("Could not find Genre with that Name!")
+            if len(querys) == 0:
+                print("Could not find a Publisher with that name!")
                 return
+
+            for query in querys:
+                if (query[0],) in genre_search:
+                    pass
+                else:
+                    genre_search.append((query[0],))
 
             print_book(curs, genre_search)
 
@@ -228,7 +276,7 @@ def print_book(curs, data):
                     for names in authornames:
                         author_list.append(names[0] + " " + names[1] + " ")
 
-    # PUBLISHERS ------------------------------------------------
+            # PUBLISHERS ------------------------------------------------
 
             curs.execute(f"""SELECT contributor_id FROM p320_07."Publishes" WHERE book_id ={number}""")
             publishers = curs.fetchall()
@@ -243,8 +291,7 @@ def print_book(curs, data):
                     for names in publishernames:
                         publisher_list.append(names[0] + " " + names[1] + " ")
 
-
-    # RATING ------------------------------------------------
+            # RATING ------------------------------------------------
 
             curs.execute(f"""SELECT AVG(rating) FROM p320_07."Rates" WHERE book_id ={number}""")
             rating = curs.fetchall()
@@ -268,8 +315,7 @@ def print_book(curs, data):
             # will simply print None
             print(f"Star Rating: {star_rating}")
 
-        #reset variables for next book
+        # reset variables for next book
         author_list = []
         publisher_list = []
         star_rating = None
-
