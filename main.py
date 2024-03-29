@@ -54,19 +54,19 @@ def main():
             if user_id < 0:
                 print("Not logged in")
             else:
-                delete_collection(conn, curs, tokens, user_id)
+                delete_collection(conn, curs, user_id)
 
         elif command == "viewcollections":
             if user_id < 0:
                 print("Not logged in")
             else:
-                view_collections(conn, curs, user_id)
+                view_collections(curs, user_id)
 
         elif command == "editcollectionname":
             if user_id < 0:
                 print("Not logged in")
             else:
-                edit_collection_name(conn, curs, tokens, user_id)
+                edit_collection_name(conn, curs, user_id)
 
 
         else:

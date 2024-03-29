@@ -43,6 +43,9 @@ def help():
           'createcollection name \n\tcreates a collection with a name\n'
           'addbook bookid collection name \n\tadds a book to the collection\n'
           'removebook bookid collection name \n\tremoves a book from a collection\n'
+          'deletecollection \n\tdeletes entered collection from database\n'
+          'viewcollections \n\tviews all collections of the logged in user'
+          'editcollectionname \n\tedits entered collection name to entered new name'
           )
 
 
@@ -214,14 +217,14 @@ def delete_from_collection(conn, curs, tokens, user_id):
     conn.commit()
 
 
-def delete_collection(conn, curs, tokens, user_id):
+def delete_collection(conn, curs, user_id):
     # gets the name of the collection the user wishes to delete
-    name_of_collection = ' '.join(tokens[1:])
+    name_of_collection = input("Enter the collection name: ")
 
     # determine the collection id of the named collection
     curs.execute(f"""SELECT a.collection_id FROM p320_07."Collection" a INNER JOIN p320_07."Bookshelf" B on 
                      a.collection_id = B.collection_id WHERE B.user_id = {user_id} 
-                     AND a.collection_name = {name_of_collection}""")
+                     AND a.collection_name = '{name_of_collection}'""")
     collection_id = curs.fetchall()
 
     # returns fail message if collection cannot be found
@@ -232,39 +235,35 @@ def delete_collection(conn, curs, tokens, user_id):
     # for the located id of the determine collection, delete said collection from all tables containing it
     for id in collection_id:
         id = id[0]
+        curs.execute(f"""DELETE FROM p320_07."Bookshelf" WHERE collection_id = {id}""")
         curs.execute(f"""DELETE FROM p320_07."Collection" WHERE collection_id = {id}""")
         curs.execute(f"""DELETE FROM p320_07."CollectionContains" WHERE collection_id = {id}""")
-        curs.execute(f"""DELETE FROM p320_07."Bookshelf" WHERE collection_id = {id}""")
 
-    print(f"\n Collection: #{name_of_collection} was deleted.")
+    print(f"\n Collection: {name_of_collection} was deleted.")
 
     # only commits if everything passes
     conn.commit()
 
 
-def view_collections(conn, curs, user_id):
+def view_collections(curs, user_id):
     # displays the collection of the given user_id
     curs.execute(f"""SELECT a.collection_name FROM p320_07."Collection" a 
                      INNER JOIN p320_07."Bookshelf" B on a.collection_id = B.collection_id 
                      WHERE B.user_id = {user_id}""")
+    collections = curs.fetchall()
+    for i in collections:
+        for x in i:
+            print(x)
 
-    # only commits if everything passes
-    conn.commit()
 
-
-def edit_collection_name(conn, curs, tokens, user_id):
+def edit_collection_name(conn, curs, user_id):
     # gets the name of the collection the user wishes to change the name of, and the new name
-    collection_name = ' '.join(tokens[1:])
-    new_name = ' '.join(tokens[2:])
+    collection_name = input("Enter the name of the collection you want to change:")
+    new_name = input("Enter the new name:")
 
-    curs.execute(f"""UPDATE p320_07."Collection" SET collection_name = {new_name} 
-                     FROM p320_07."Bookshelf" b WHERE collection_name = {collection_name} 
+    curs.execute(f"""UPDATE p320_07."Collection" SET collection_name = '{new_name}' 
+                     FROM p320_07."Bookshelf" b WHERE collection_name = '{collection_name}' 
                      AND b.user_id = {user_id}""")
-
-    # returns fail message if collection name cannot be found
-    if len(tokens) == 2:
-        print(f"\nError. Please enter both a collection name and a replacement name.")
-        return
 
     # only commits if everything passes
     conn.commit()
