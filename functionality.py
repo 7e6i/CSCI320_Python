@@ -253,6 +253,9 @@ def search(curs, tokens):
 
             print_book(curs, genre_search)
 
+        case default:
+            print("Invalid search command. Enter a valid command:\n\t(t)itle, "
+                  "(r)elease date, (a)uthors, (p)ublisher, (g)enre")
 
 def print_book(curs, data):
     author_list = []
