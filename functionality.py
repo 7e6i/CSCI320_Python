@@ -37,15 +37,22 @@ def help():
           '---------------------------\n'
           'help\n\tdisplays this information regardless of menu\n'
           'quit\n\texits the program regardless of menu\n'
+          
+          '========= ACCOUNTS =========\n'
           'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
           'login username password\n\tlogs in if username and password match database entry\n'
           'logout\n\tlogs out of current account\n'
+          '========= FRIENDS =========\n'
+          'addfriend username\n\tadds user to friends list\n'
+          'removefriend username\n\tremoves friend from friends list\n'
+          'finduser email\n\treturns users with similar email\n'
+          '========= COLLECTIONS =========\n'
           'createcollection name \n\tcreates a collection with a name\n'
-          'addbook bookid collection name \n\tadds a book to the collection\n'
-          'removebook bookid collection name \n\tremoves a book from a collection\n'
           'deletecollection \n\tdeletes entered collection from database\n'
           'viewcollections \n\tviews all collections of the logged in user\n'
           'editcollectionname \n\tedits entered collection name to entered new name\n'
+          'addbook bookid collection name \n\tadds a book to the collection\n'
+          'removebook bookid collection name \n\tremoves a book from a collection\n'
           )
 
 
@@ -89,12 +96,12 @@ def makeaccount(conn,curs, tokens):
 
 
 def login(conn, curs, tokens):
-    username = tokens[1]
-    password = tokens[2]
-
     if len(tokens)!=3:
         print('Invalid entry')
         return -1
+
+    username = tokens[1]
+    password = tokens[2]
 
     curs.execute("""SELECT user_id,username,password FROM p320_07."Reader";""")
     data = curs.fetchall()
@@ -107,13 +114,99 @@ def login(conn, curs, tokens):
         return -1
 
     user_id = users[username][0]
-    curs.execute("""UPDATE p320_07."Reader" SET last_access = %s WHERE user_id = %s;""",(datetime.datetime.now(),user_id))
+    curs.execute("""UPDATE p320_07."Reader" SET last_access = %s WHERE user_id = %s8;""",(datetime.datetime.now(),user_id))
     conn.commit()
     print("Logged in")
     return user_id
 
+  
+ def addfriend(conn, curs, passed_user_id, tokens):
+    if len(tokens) != 2:
+        print('Invalid entry')
+        return
+
+    friend_username = tokens[1]
+    friend_id = -1
+
+    curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
+    reader_data = curs.fetchall()
+    for reader in reader_data:
+        if friend_username == reader[1]: friend_id = reader[0]
+
+    if friend_id == -1:
+        print("There is no user with that username")
+        return
+
+    curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
+    friend_data = curs.fetchall()
+
+    for friend in friend_data:
+        if passed_user_id == friend[0] and friend_id == friend[1]:
+            print('Already friends')
+            return
+
+    curs.execute("""INSERT INTO p320_07."Friendship"
+        (user_id, friend_id)
+        VALUES (%s, %s);""",
+        (passed_user_id, friend_id))
+
+    conn.commit()
+    print("Friend added")
+
+
+def removefriend(conn, curs, passed_user_id, tokens):
+    if len(tokens) != 2:
+        print('Invalid entry')
+        return
+
+    friend_username = tokens[1]
+    friend_id_input = -1
+    friendship_exist = False
+
+    curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
+    reader_data = curs.fetchall()
+    for reader in reader_data:
+        if friend_username == reader[1]: friend_id_input = reader[0]
+
+    if friend_id_input == -1:
+        print("There is no user with that username")
+        return
+
+    curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
+    friend_data = curs.fetchall()
+
+    for friend in friend_data:
+        if passed_user_id == friend[0] and friend_id_input == friend[1]:
+
+            curs.execute("""DELETE FROM p320_07."Friendship" 
+                WHERE user_id=%s AND friend_id = %s;""",
+                (passed_user_id, friend_id_input))
+
+            print("Friendship was deleted")
+            conn.commit()
+
+            return
+
+    print("No friend was found")
+
+
+def finduser(conn, curs, tokens):
+    if len(tokens) != 2:
+        print('Invalid entry')
+        return
+    email = tokens[1]
+    curs.execute("""SELECT username,email FROM p320_07."Reader" WHERE user_id IN 
+            (SELECT user_id FROM p320_07."Reader" WHERE email LIKE %s);""", ('%%' + email + '%%',))
+    data = curs.fetchall()
+    print('Username\t\tEmail')
+    for user in data: print(f'{user[0]}\t\t{user[1]}')
+ 
 
 def create_collection(conn, curs, tokens, user_id):
+    if len(tokens) == 1:
+        print('Invalid collection name')
+        return
+
     # get the whole name including spaces
     name = ' '.join(tokens[1:])
 
@@ -133,7 +226,9 @@ def create_collection(conn, curs, tokens, user_id):
     # add to database
     conn.commit()
 
+    print(f"Collection was successfully created!")
 
+    
 def add_to_collection(conn, curs, tokens, user_id):
     # get book user wants to add and the name of the collection,
     add_book = int(tokens[1])
@@ -216,7 +311,7 @@ def delete_from_collection(conn, curs, tokens, user_id):
     # will only commit if everything passes
     conn.commit()
 
-
+    
 def delete_collection(conn, curs, user_id):
     # gets the name of the collection the user wishes to delete
     name_of_collection = input("Enter the collection name: ")
