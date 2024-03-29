@@ -124,21 +124,32 @@ def search(curs, tokens):
     #add switch statement and parameter filter to search for certain things :)
     filter = tokens[1]
     keyword = ' '.join(tokens[2:])
-    print ("filter ", filter)
-    print("\nkeyword ", keyword)
+    print("keyword: ", keyword)
+
     match filter:
 
         # title
         case 't':
-            curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
+
+            curs.execute(f"""SELECT book_id FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
             title_search = curs.fetchall()
-            for book in title_search:
-                print(f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}\n")
+
+            if len(title_search) == 0:
+                print("Could not find a Book with that Title!")
+                return
+
+            print_book(curs,title_search)
 
         # release date
         case 'r':
-            curs.execute(f"""SELECT book_id FROM p320_07."Released" WHERE date LIKE '%{keyword}%'""")
+            curs.execute(f"""SELECT book_id FROM p320_07."Released" WHERE date = '{keyword}'""")
+            released_search = curs.fetchall()
 
+            if len(released_search) == 0:
+                print("Could not find a Book released on that Date!")
+                return
+
+            print_book(curs, released_search)
         # author
         case 'a':
             # get the first and last name separated
@@ -152,29 +163,41 @@ def search(curs, tokens):
                             ON A.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{first_name}%' 
                             OR C.last_name LIKE '%{last_name}%';""")
             author_search = curs.fetchall()
+            if len(author_search) == 0:
+                print("Could not find Author with that Name!")
+                return
 
             # for all the collections the user made
             print_book(curs,author_search)
 
         # publisher
         case 'p':
-            # curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
+            # get the first and last name separated
+            # ALWAYS search for a first name, last name is NOT required
+            first_name = keyword.split()[0]
+            last_name = ''
+            if len(tokens) > 3:
+                last_name = keyword.split()[1]
+
             curs.execute(f"""SELECT P.book_id FROM p320_07."Publishes" P INNER JOIN p320_07."Contributor" C
-                            ON P.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{keyword}%'""")
+                            ON P.contributor_id = C.contributor_id WHERE C.first_name LIKE '%{first_name}%' 
+                            OR C.last_name LIKE '%{last_name}%'""")
             publisher_search = curs.fetchall()
-            print_book(curs,publisher_search)
+            print_book(curs, publisher_search)
         # genre
         case 'g':
-            # curs.execute(f"""SELECT * FROM p320_07."Book" WHERE title LIKE '%{keyword}%';""")
+
             curs.execute(f"""SELECT B.book_id FROM p320_07."Book" B INNER JOIN p320_07."Genre" G 
                             ON B.genre_id = G.genre_id WHERE G.name LIKE '%{keyword}%'; """)
             genre_search = curs.fetchall()
-            print_book(curs,genre_search)
+            print_book(curs, genre_search)
 
 
 def print_book(curs, data):
     author_list = []
     publisher_list = []
+
+    star_rating = None
 
     # AUTHOR ------------------------------------------------
     # get book contributor information first for AUTHOR
@@ -182,7 +205,6 @@ def print_book(curs, data):
         for number in id:
             curs.execute(f"""SELECT contributor_id FROM p320_07."Writes" WHERE book_id ={number}""")
             authors = curs.fetchall()
-
             # get author(s) names
             for author in authors:
                 for author_id in author:
@@ -190,12 +212,11 @@ def print_book(curs, data):
                     authornames = curs.fetchall()
                     for names in authornames:
                         author_list.append(names[0] + " " + names[1] + " ")
+                    # print("Author(s): ", author_list)
 
-            print("Author(s): ", author_list)
 
      # PUBLISHERS ------------------------------------------------
-    for id in data:
-        for number in id:
+
             curs.execute(f"""SELECT contributor_id FROM p320_07."Publishes" WHERE book_id ={number}""")
             publishers = curs.fetchall()
 
@@ -208,39 +229,28 @@ def print_book(curs, data):
                     for names in publishernames:
                         publisher_list.append(names[0] + " " + names[1] + " ")
 
-            print("Publisher(s): ", publisher_list)
 
-            current_rate = 0
-            # RATING ------------------------------------------------
-            for id in data:
-                for number in id:
-                    curs.execute(f"""SELECT AVG(rating) FROM p320_07."Rates" WHERE book_id ={number}""")
-                    rating = curs.fetchall()
-                    print("Rating: ", rating)
+    # RATING ------------------------------------------------
 
-                    for rates in rating:
-                        print ("Rates: ", rates)
-
-                        for rate in rates:
-                            print ("rate: ", rate)
-                            print("number of ratings: ", len(rating))
+            curs.execute(f"""SELECT AVG(rating) FROM p320_07."Rates" WHERE book_id ={number}""")
+            rating = curs.fetchall()
+            for rates in rating:
+                for rate in rates:
+                    star_rating = rate
 
 
+        curs.execute(f"""SELECT * FROM p320_07."Book" WHERE book_id = {number}""")
+        books = curs.fetchall()
+        for book in books:
+            print(f"Title: {book[1]}\nID: {book[0]}\nAudience: {book[2]}\nLength: {book[3]}")
 
-                        # for rate_number in rate:
-                        #     print("ratenumber: ", rate_number)
-                    #         curs.execute(
-                    #             f"""SELECT first_name, last_name FROM p320_07."Contributor" WHERE contributor_id = {publisher_id}""")
-                    #         rated = curs.fetchall()
-                    #         for stars in rated:
-                    #             print("stars: ", stars)
-                    #
-                    # print("Publisher(s): ", publisher_list)
+        print("Author(s): ", author_list)
+        print("Publisher(s): ", publisher_list)
+        if star_rating is not None:
+            print(f"Star Rating: {star_rating:.2f}\n")
+        else:
+            print(f"Star Rating: {star_rating}")
+        author_list = []
+        publisher_list = []
+        star_rating = None
 
-
-
-            curs.execute(f"""SELECT * FROM p320_07."Book" WHERE book_id = {number}""")
-            books = curs.fetchall()
-            for book in books:
-                print(
-                    f"ID: {book[0]}, Title: {book[1]}, Audience: {book[2]}, Length: {book[3]}\n")
