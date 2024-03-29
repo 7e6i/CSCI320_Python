@@ -212,7 +212,7 @@ def stop_reading(conn, curs, tokens, user_id):
     # Valid, update the reading session with new ending values
     end_time = datetime.datetime.now()
     curs.execute("""UPDATE p320_07."Reads"
-                SET end_time = %s, end_page = %s WHERE user_id = %s AND book_id = %s;""",
+                SET end_time = %s, end_page = %s WHERE user_id = %s AND book_id = %s AND end_time IS NULL;""",
                 (end_time, end_int, user_id, book_id))
 
     conn.commit()
@@ -290,7 +290,7 @@ def rate(conn, curs, tokens, user_id):
         book_int = int(book_id)
         rating_int = int(rating)
     except:
-        print('Invalid entry; book id must be an integer')
+        print('Invalid entry; book id and rating must be integers')
         return -1
 
     # Invalid if selected book does not exist
@@ -328,7 +328,7 @@ def rate(conn, curs, tokens, user_id):
 
 def test(conn, curs):
     #for when you want to test stuff quickly
-    curs.execute("""SELECT user_id,username,password FROM p320_07."Reader";""")
+    curs.execute("""SELECT user_id,username,password FROM p320_07."Book";""")
     data = curs.fetchall()
     users = dict()
     for user in data:
