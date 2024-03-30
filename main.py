@@ -14,9 +14,7 @@ def main():
         tokens = user_in.split(" ")
         command = tokens[0]
 
-        if command == "test":
-            test(conn,curs)
-        elif command == "help":
+        if command == "help":
             help()
         elif command == "quit":
             print('Thanks for visiting!')

@@ -34,7 +34,7 @@ def close(server, conn, curs):
 
 def help():
     print('Below are valid commands and their uses\n'
-          '---------------------------\n'
+          '========= BASIC =========\n'
           'help\n\tdisplays this information regardless of menu\n'
           'quit\n\texits the program regardless of menu\n'
           
@@ -744,7 +744,7 @@ def search(curs, tokens):
             genre_search = list()
 
             if len(querys) == 0:
-                print("Could not find a Publisher with that name!")
+                print("Could not find a Genre with that name!")
                 return
 
             for query in querys:
@@ -818,7 +818,7 @@ def print_book(curs, data):
             print(f"Star Rating: {star_rating:.2f}\n")
         else:
             # will simply print None
-            print(f"Star Rating: {star_rating}")
+            print(f"Star Rating: {star_rating}\n")
 
         # reset variables for next book
         author_list = []
