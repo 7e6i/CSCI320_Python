@@ -204,7 +204,13 @@ def finduser(conn, curs, tokens):
     data = curs.fetchall()
     print('Username\t\tEmail')
     for user in data: print(f'{user[0]}\t\t{user[1]}')
- 
+
+def friends(conn, curs, tokens, user_id):
+    curs.execute("""SELECT username FROM p320_07."Reader" WHERE user_id IN 
+                (SELECT friend_id FROM p320_07."Friendship" WHERE user_id = %s);""", (user_id,))
+    data = curs.fetchall()
+    print(data)
+
 
 def create_collection(conn, curs, tokens, user_id):
     if len(tokens) == 1:

@@ -29,6 +29,12 @@ def main():
         elif command == "login":
             user_id = login(conn, curs, tokens)
 
+        elif command == "finduser":
+            if user_id < 0:
+                print("Not logged in")
+            else:
+                finduser(conn, curs, tokens)
+
         elif command == "addfriend":
             if user_id < 0:
                 print("Not logged in")
@@ -41,9 +47,11 @@ def main():
             else:
                 removefriend(conn, curs, user_id, tokens)
                 
-        elif command == "finduser":
+        elif command == "friends":
             if user_id < 0:
                 print("Not logged in")
+            else:
+                friends(conn, curs, tokens, user_id)
              
         elif command == "createcollection":
             if user_id<0:
