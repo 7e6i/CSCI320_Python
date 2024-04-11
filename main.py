@@ -15,7 +15,7 @@ def main():
         command = tokens[0]
 
         if command == "help":
-            help()
+            help(user_id)
         elif command == "quit":
             print('Thanks for visiting!')
             break
@@ -24,53 +24,53 @@ def main():
             user_id = -1
 
         elif command == "makeaccount":
-            user_id = makeaccount(conn,curs,tokens)
+            user_id = makeaccount(conn,curs)
 
         elif command == "login":
-            user_id = login(conn, curs, tokens)
+            user_id = login(conn, curs)
 
         elif command == "finduser":
             if user_id < 0:
                 print("Not logged in")
             else:
-                finduser(conn, curs, tokens)
+                finduser(conn, curs)
 
         elif command == "addfriend":
             if user_id < 0:
                 print("Not logged in")
             else:
-                addfriend(conn, curs, user_id, tokens)
+                addfriend(conn, curs, user_id)
                 
         elif command == "removefriend":
             if user_id < 0:
                 print("Not logged in")
             else:
-                removefriend(conn, curs, user_id, tokens)
+                removefriend(conn, curs, user_id)
                 
         elif command == "friends":
             if user_id < 0:
                 print("Not logged in")
             else:
-                friends(conn, curs, tokens, user_id)
+                friends(conn, curs, user_id)
              
         elif command == "createcollection":
             if user_id<0:
                 print("Not logged in")
             else:
-                create_collection(conn, curs, tokens, user_id)
+                create_collection(conn, curs, user_id)
                 print(f"\nCollection was successfully created!")
 
         elif command == "addbook":
             if user_id < 0:
                 print("Not logged in")
             else:
-                add_to_collection(conn, curs, tokens, user_id)
+                add_to_collection(conn, curs, user_id)
 
         elif command == "removebook":
             if user_id < 0:
                 print("Not logged in")
             else:
-                delete_from_collection(conn, curs, tokens, user_id)
+                delete_from_collection(conn, curs, user_id)
 
         elif command == "deletecollection":
             if user_id < 0:
@@ -93,19 +93,23 @@ def main():
         elif command == "read":
             if user_id<0:
                 print("Not logged in")
-            elif len(tokens) == 2:
-                read_random(conn,curs,tokens,user_id)
             else:
-                read(conn,curs,tokens,user_id)
+                read(conn,curs,user_id)
+
+        elif command == "read random book":
+            if user_id<0:
+                print("Not logged in")
+            else:
+                read_random(conn, curs, user_id)
                 
         elif command == "rate":
             if user_id<0:
                 print("Not logged in")
             else:
-                rate(conn,curs,tokens,user_id)
+                rate(conn,curs,user_id)
                 
         elif command == "search":
-            search(curs, tokens)
+            search(curs)
             
         else:
             print('Invalid command')

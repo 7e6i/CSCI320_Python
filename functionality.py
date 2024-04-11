@@ -32,46 +32,47 @@ def close(server, conn, curs):
     curs.close()
 
 
-def help():
-    print('Below are valid commands and their uses\n'
-          '========= BASIC =========\n'
-          'help\n\tdisplays this information regardless of menu\n'
-          'quit\n\texits the program regardless of menu\n'
-          
-          '========= ACCOUNTS =========\n'
-          'makeaccount username password email firstname lastname\n\tmakes a new account with specified info\n'
-          'login username password\n\tlogs in if username and password match database entry\n'
-          'logout\n\tlogs out of current account\n'
-          '========= FRIENDS =========\n'
-          'addfriend username\n\tadds user to friends list\n'
-          'removefriend username\n\tremoves friend from friends list\n'
-          'finduser email\n\treturns users with similar email\n'
-          '========= COLLECTIONS =========\n'
-          'createcollection name \n\tcreates a collection with a name\n'
-          'deletecollection \n\tdeletes entered collection from database\n'
-          'viewcollections \n\tviews all collections of the logged in user\n'
-          'editcollectionname \n\tedits entered collection name to entered new name\n'
-          'addbook bookid collection name \n\tadds a book to the collection\n'
-          'removebook bookid collection name \n\tremoves a book from a collection\n'
-          '========= BOOKS =========\n'
-          'search filter keyword(s)\n\tsearch for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre\n'
-          'read bookid start|stop page\n\tstart or stop a book reading session given page number\n'
-          'read collectionid\n\tstart reading a random book in a collection at page 0\n'
-          'rate bookid rating\n\trate a book between 1 and 5 stars'
-          )
+def help(user_id):
+    if(user_id == -1):
+        print('Below are valid commands and their uses\n'
+              '========= BASIC =========\n'
+              'help: displays this information regardless of menu\n'
+              'quit: exits the program regardless of menu\n'
+              '========= ACCOUNTS =========\n'
+              'makeaccount: makes a new account\n'
+              'login: logs in if username and password match database entry\n'
+              )
+    else:
+        print('Below are valid commands and their uses\n'
+              '========= BASIC =========\n'
+              'help: displays this information regardless of menu\n'
+              'quit: exits the program regardless of menu\n'
+              
+              '========= ACCOUNTS =========\n'
+              'makeaccount: makes a new account\n'
+              'login: logs in if username and password match database entry\n'
+              'logout: logs out of current account\n'
+              '========= FRIENDS =========\n'
+              'addfriend: adds user to friends list\n'
+              'removefriend: removes friend from friends list\n'
+              'finduser: returns users with similar email\n'
+              '========= COLLECTIONS =========\n'
+              'createcollection: creates a collection with a name\n'
+              'deletecollection: deletes entered collection from database\n'
+              'viewcollections: views all collections of the logged in user\n'
+              'editcollectionname: edits entered collection name to entered new name\n'
+              'addbook: adds a book to the collection\n'
+              'removebook: removes a book from a collection\n'
+              '========= BOOKS =========\n'
+              'search\n'
+              'read: start or stop a book reading session given page number\n'
+              'read random book: start reading a random book in a collection at page 0\n'
+              'rate: rate a book between 1 and 5 stars'
+              )
 
-def makeaccount(conn, curs, tokens):
-    if len(tokens) != 6:
-        print('Invalid entry')
-        return -1
+def makeaccount(conn, curs):
 
-    # print(tokens[1:])
-
-    username = tokens[1]
-    password = tokens[2]
-    email = tokens[3]
-    fname = tokens[4]
-    lname = tokens[5]
+    username = input('Enter a username\n>').strip()
 
     curs.execute("""SELECT username FROM p320_07."Reader";""")
     data = curs.fetchall()
@@ -79,6 +80,12 @@ def makeaccount(conn, curs, tokens):
     if username in usernames:
         print("That username is taken")
         return -1
+
+    password = input('Enter a password\n>').strip()
+    email = input('Enter your email\n>').strip()
+    fname = input('Enter your first name\n>').strip()
+    lname = input('Enter your last name\n>').strip()
+
 
     curs.execute("""SELECT MAX(user_id) FROM p320_07."Reader";""")
     data = curs.fetchall()
@@ -98,13 +105,10 @@ def makeaccount(conn, curs, tokens):
     return next_id
 
 
-def login(conn, curs, tokens):
-    if len(tokens)!=3:
-        print('Invalid entry')
-        return -1
+def login(conn, curs):
 
-    username = tokens[1]
-    password = tokens[2]
+    username = input("Enter your username: ")
+    password = input("Enter your password: ")
 
     curs.execute("""SELECT user_id,username,password FROM p320_07."Reader";""")
     data = curs.fetchall()
@@ -124,12 +128,9 @@ def login(conn, curs, tokens):
     return user_id
 
 
-def addfriend(conn, curs, passed_user_id, tokens):
-    if len(tokens) != 2:
-        print('Invalid entry')
-        return
+def addfriend(conn, curs, passed_user_id):
 
-    friend_username = tokens[1]
+    friend_username = input("enter the username you want to follow: ")
     friend_id = -1
 
     curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
@@ -158,14 +159,10 @@ def addfriend(conn, curs, passed_user_id, tokens):
     print("Friend added")
 
 
-def removefriend(conn, curs, passed_user_id, tokens):
-    if len(tokens) != 2:
-        print('Invalid entry')
-        return
+def removefriend(conn, curs, passed_user_id):
 
-    friend_username = tokens[1]
+    friend_username = input("enter the username of the friend you want to delete: ")
     friend_id_input = -1
-    friendship_exist = False
 
     curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
     reader_data = curs.fetchall()
@@ -194,11 +191,9 @@ def removefriend(conn, curs, passed_user_id, tokens):
     print("No friend was found")
 
 
-def finduser(conn, curs, tokens):
-    if len(tokens) != 2:
-        print('Invalid entry')
-        return
-    email = tokens[1]
+def finduser(conn, curs):
+
+    email = input("Enter the email of the user you want to find: ")
     curs.execute("""SELECT username,email FROM p320_07."Reader" WHERE user_id IN 
             (SELECT user_id FROM p320_07."Reader" WHERE email LIKE %s);""", ('%%' + email + '%%',))
     data = curs.fetchall()
@@ -212,13 +207,9 @@ def friends(conn, curs, tokens, user_id):
     print(data)
 
 
-def create_collection(conn, curs, tokens, user_id):
-    if len(tokens) == 1:
-        print('Invalid collection name')
-        return
-
+def create_collection(conn, curs, user_id):
     # get the whole name including spaces
-    name = ' '.join(tokens[1:])
+    name = input("Enter the name of your collection: ")
 
     # get the next available id
     curs.execute("""SELECT MAX(collection_id) FROM p320_07."Collection";""")
@@ -239,10 +230,10 @@ def create_collection(conn, curs, tokens, user_id):
     print(f"Collection was successfully created!")
 
     
-def add_to_collection(conn, curs, tokens, user_id):
+def add_to_collection(conn, curs, user_id):
     # get book user wants to add and the name of the collection,
-    add_book = int(tokens[1])
-    collection_name = ' '.join(tokens[2:])  # should be spelled EXACTLY like in the database
+    add_book = int(input("Enter the bookID number: "))
+    collection_name = input("Enter the name of the collection you want to add the book to: ")
 
     #   figure out collection id with the name they inputted
     curs.execute(f"""SELECT collection_id FROM p320_07."Collection" WHERE collection_name = '{collection_name}'""")
@@ -289,10 +280,10 @@ def add_to_collection(conn, curs, tokens, user_id):
     conn.commit()
 
 
-def delete_from_collection(conn, curs, tokens, user_id):
+def delete_from_collection(conn, curs, user_id):
     # get book user wants to remove and the name of the collection,
-    remove_book = int(tokens[1])
-    collection_name = ' '.join(tokens[2:])  # should be spelled EXACTLY like in the database
+    remove_book = int(input("Enter the bookID number: "))
+    collection_name = input("Enter the name of the collection you want to delete the book to: ")
 
     # figure out collection id with the name they inputted
     curs.execute(f"""SELECT collection_id FROM p320_07."Collection" WHERE collection_name = '{collection_name}'""")
@@ -411,32 +402,30 @@ def edit_collection_name(conn, curs, user_id):
         print("You do not own this collection or it does not exist!")
 
         
-def read(conn, curs, tokens, user_id):
+def read(conn, curs, user_id):
     # Invalid if the inputted number of tokens is incorrect
-    if len(tokens) != 4:
-        print('Invalid entry; incorrect number of tokens')
-        return -1
 
     # Invalid if book id is not an integer
-    book_id = tokens[1]
+    book_id = input("Enter Book ID: ")
     try:
         book_int = int(book_id)
     except:
         print('Invalid entry; book id must be an integer')
         return -1
 
-    if tokens[2].lower() == 'start':
-        start_reading(conn, curs, tokens, user_id)
-    elif tokens[2].lower() == 'stop':
-        stop_reading(conn, curs, tokens, user_id)
+    decision = input("input start if you want to start reading or input stop if you want to stop reading: ")
+
+    if decision == 'start':
+        start_reading(conn, curs, book_id, user_id)
+    elif decision == 'stop':
+        stop_reading(conn, curs, book_id, user_id)
     else:
         print('Invalid entry; must say "start" or "stop" as the third token')
         return -1
 
       
-def start_reading(conn, curs, tokens, user_id):
-    book_id = tokens[1]
-    start_page = tokens[3]
+def start_reading(conn, curs, book_id, user_id):
+    start_page = input("Enter the page you are starting on: ")
 
     # Invalid if the starting page is not an integer
     try:
@@ -478,9 +467,8 @@ def start_reading(conn, curs, tokens, user_id):
     print("Started reading session at page %s" % start_page)
 
     
-def stop_reading(conn, curs, tokens, user_id):
-    book_id = tokens[1]
-    end_page = tokens[3]
+def stop_reading(conn, curs, book_id, user_id):
+    end_page = input("enter the page number you finished on: ")
 
     # Invalid if there doesn't exist a reading session with the user and book
     # Invalid if there are multiple reading sessions with the user and book
@@ -520,9 +508,9 @@ def stop_reading(conn, curs, tokens, user_id):
     print("Stopped reading session, pages %s->%s" % (start_int, end_int))
 
     
-def read_random(conn, curs, tokens, user_id):
+def read_random(conn, curs, user_id):
     # Invalid if collection id is not an integer
-    collection_id = tokens[1]
+    collection_id = input("enter the collection id: ")
     try:
         collection_int = int(collection_id)
     except:
@@ -579,14 +567,11 @@ def read_random(conn, curs, tokens, user_id):
     conn.commit()
 
     
-def rate(conn, curs, tokens, user_id):
+def rate(conn, curs, user_id):
     # Invalid if the inputted number of tokens is incorrect
-    if len(tokens)!=3:
-        print('Invalid entry; incorrect number of tokens')
-        return -1
 
-    book_id = tokens[1]
-    rating = tokens[2]
+    book_id = input("enter the book ID: ")
+    rating = input("enter your rating: ")
 
     # Invalid if book id or rating are not integers
     try:
@@ -631,8 +616,8 @@ def rate(conn, curs, tokens, user_id):
 
 
 def search(curs, tokens):
-    filter = tokens[1]
-    keyword = ' '.join(tokens[2:])
+    filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre')
+    keyword = input("add keyword(s)")
 
     match filter:
 
