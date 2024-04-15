@@ -47,7 +47,6 @@ def help(user_id):
               '========= BASIC =========\n'
               'help: displays this information regardless of menu\n'
               'quit: exits the program regardless of menu\n'
-              
               '========= ACCOUNTS =========\n'
               'makeaccount: makes a new account\n'
               'login: logs in if username and password match database entry\n'
@@ -67,7 +66,9 @@ def help(user_id):
               'search\n'
               'read: start or stop a book reading session given page number\n'
               'read random book: start reading a random book in a collection at page 0\n'
-              'rate: rate a book between 1 and 5 stars'
+              'rate: rate a book between 1 and 5 stars\n'
+              'recommend: gives various types of recommendations on books\n'
+              'foryou: finds books that suit your reading history'
               )
 
 def makeaccount(conn, curs):
@@ -614,6 +615,43 @@ def rate(conn, curs, user_id):
         print("Updated rating of book %s to %s stars" % (book_int, rating_int))
     conn.commit()
 
+def foryou(conn, curs, user_id):
+    # Find genres from books in read history
+    curs.execute("""
+        SELECT g.name, g.genre_id, COUNT(*) AS genre_count
+        FROM p320_07."Reads" r
+        INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+        INNER JOIN p320_07."Genre" g ON b.genre_id = g.genre_id
+        WHERE r.user_id = %s
+        GROUP BY g.name, g.genre_id
+        ORDER BY genre_count DESC
+    """,(user_id,))
+
+    top_genres = curs.fetchall()
+
+    print(f"It seems like you read {top_genres[0][0]} books a lot!\n")
+
+    top_genre_id = top_genres[0][1]
+    curs.execute("""
+                SELECT b.title, AVG(r.rating) AS avg_rating
+                FROM p320_07."Book" b
+                INNER JOIN p320_07."Rates" r ON b.book_id = r.book_id
+                WHERE b.genre_id = %s
+                GROUP BY b.title
+                ORDER BY avg_rating DESC
+                LIMIT 30
+            """, (top_genre_id,))
+
+    top_books = curs.fetchall()
+    print(f"Here are some of the top rated {top_genres[0][0]} books:")
+    if top_books:
+        # Pleasant string formatting
+        i = 1
+        max_title_length = max(len(b[0]) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[0]:{max_title_length}} ({book[1]:.2f} stars)")
+            i+=1
+
 def recommend(conn, curs, user_id):
     # Display most popular books overall first
     curs.execute("""
@@ -629,14 +667,14 @@ def recommend(conn, curs, user_id):
     top_books = curs.fetchall()
 
     print("Top 20 books in the last 90 days:")
-    # Pleasant string formatting
-    i = 1
     # Print all top books
     if top_books:
+        # Pleasant string formatting
+        i = 1
         max_title_length = max(len(b[0]) for b in top_books)
         max_id_length = max(len(str(b[1])) for b in top_books)
         for book in top_books:
-            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} reading sessions)")
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
             i+=1
 
     # Display most popular books among people following me
@@ -655,14 +693,15 @@ def recommend(conn, curs, user_id):
     top_books = curs.fetchall()
 
     print("Top 20 books among users following you:")
-    # Pleasant string formatting
-    i = 1
+
     # Print more top books
     if top_books:
+        # Pleasant string formatting
+        i = 1
         max_title_length = max(len(b[0]) for b in top_books)
         max_id_length = max(len(str(b[1])) for b in top_books)
         for book in top_books:
-            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} reading sessions)")
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
             i+=1
 
     # Display most popular newly released books during this calendar month
@@ -684,14 +723,14 @@ def recommend(conn, curs, user_id):
     top_books = curs.fetchall()
 
     print("Top 5 newly released books in the current calendar month:")
-    i = 1
     # Print all top books
     if top_books:
         # Pleasant string formatting
+        i = 1
         max_title_length = max(len(b[0]) for b in top_books)
         max_id_length = max(len(str(b[1])) for b in top_books)
         for book in top_books:
-            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} reading sessions)")
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
             i += 1
 
 def search(curs, tokens):
