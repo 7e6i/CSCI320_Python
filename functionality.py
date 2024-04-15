@@ -614,6 +614,85 @@ def rate(conn, curs, user_id):
         print("Updated rating of book %s to %s stars" % (book_int, rating_int))
     conn.commit()
 
+def recommend(conn, curs, user_id):
+    # Display most popular books overall first
+    curs.execute("""
+        SELECT b.title, b.book_id, COUNT(*) AS session_count
+        FROM p320_07."Reads" r
+        INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+        WHERE r.end_time > CURRENT_DATE - INTERVAL '90' day
+        GROUP BY b.title, b.book_id
+        ORDER BY session_count DESC
+        LIMIT 20
+    """)
+
+    top_books = curs.fetchall()
+
+    print("Top 20 books in the last 90 days:")
+    # Pleasant string formatting
+    i = 1
+    # Print all top books
+    if top_books:
+        max_title_length = max(len(b[0]) for b in top_books)
+        max_id_length = max(len(str(b[1])) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} reading sessions)")
+            i+=1
+
+    # Display most popular books among people following me
+    curs.execute("""
+        SELECT b.title, b.book_id, COUNT(*) AS session_count
+        FROM p320_07."Friendship" f
+        INNER JOIN p320_07."Reads" r ON f.user_id = r.user_id
+        INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+        WHERE f.friend_id = %s
+        AND r.end_time > CURRENT_DATE - INTERVAL '90' day
+        GROUP BY b.title, b.book_id
+        ORDER BY session_count DESC
+        LIMIT 20
+    """,(user_id,))
+
+    top_books = curs.fetchall()
+
+    print("Top 20 books among users following you:")
+    # Pleasant string formatting
+    i = 1
+    # Print more top books
+    if top_books:
+        max_title_length = max(len(b[0]) for b in top_books)
+        max_id_length = max(len(str(b[1])) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} reading sessions)")
+            i+=1
+
+    # Display most popular newly released books during this calendar month
+    curs.execute("""
+            SELECT b.title, b.book_id, COUNT(*) AS session_count
+            FROM (
+                SELECT DISTINCT rel.book_id
+                FROM p320_07."Released" rel
+                WHERE EXTRACT(MONTH FROM rel.date) = EXTRACT(MONTH FROM CURRENT_DATE)
+                AND EXTRACT(YEAR FROM rel.date) = EXTRACT(YEAR FROM CURRENT_DATE)
+            ) AS distinct_books
+            INNER JOIN p320_07."Reads" r ON distinct_books.book_id = r.book_id
+            INNER JOIN p320_07."Book" b ON distinct_books.book_id = b.book_id
+            GROUP BY b.title, b.book_id
+            ORDER BY session_count DESC
+            LIMIT 5
+        """)
+
+    top_books = curs.fetchall()
+
+    print("Top 5 newly released books in the current calendar month:")
+    i = 1
+    # Print all top books
+    if top_books:
+        # Pleasant string formatting
+        max_title_length = max(len(b[0]) for b in top_books)
+        max_id_length = max(len(str(b[1])) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} reading sessions)")
+            i += 1
 
 def search(curs, tokens):
     filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre')
