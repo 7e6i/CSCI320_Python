@@ -41,6 +41,8 @@ def help(user_id):
               '========= ACCOUNTS =========\n'
               'makeaccount: makes a new account\n'
               'login: logs in if username and password match database entry\n'
+              '========= BOOKS =========\n'
+              'search\n'
               )
     else:
         print('Below are valid commands and their uses\n'
@@ -52,10 +54,12 @@ def help(user_id):
               'makeaccount: makes a new account\n'
               'login: logs in if username and password match database entry\n'
               'logout: logs out of current account\n'
+              
               '========= FRIENDS =========\n'
               'addfriend: adds user to friends list\n'
               'removefriend: removes friend from friends list\n'
               'finduser: returns users with similar email\n'
+              
               '========= COLLECTIONS =========\n'
               'createcollection: creates a collection with a name\n'
               'deletecollection: deletes entered collection from database\n'
@@ -63,11 +67,15 @@ def help(user_id):
               'editcollectionname: edits entered collection name to entered new name\n'
               'addbook: adds a book to the collection\n'
               'removebook: removes a book from a collection\n'
+              
               '========= BOOKS =========\n'
               'search\n'
               'read: start or stop a book reading session given page number\n'
-              'read random book: start reading a random book in a collection at page 0\n'
-              'rate: rate a book between 1 and 5 stars'
+              'read: random book: start reading a random book in a collection at page 0\n'
+              'rate: rate a book between 1 and 5 stars\n'
+              
+              '======== USER =========\n'
+              'profile: see user profile with top books, number of collection, and friends'
               )
 
 def makeaccount(conn, curs):
@@ -190,6 +198,51 @@ def removefriend(conn, curs, passed_user_id):
 
     print("No friend was found")
 
+def display_user_profile(curs, user_id):
+
+    curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
+                 (user_id,))
+    collection_number_query = curs.fetchall()
+    collection_number = collection_number_query[0][0]
+
+    #ERROR ON QUERY!!!!!!!!! CHECK STATEMENT
+    curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                    ON R.user_id = F.friend_id Where F.user_id = %s""", (user_id,))
+    following_query = curs.fetchall()
+
+    following = ""
+
+    for follow in following_query:
+        following += f"{follow[0]}\n\t"
+
+    curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                        ON R.user_id = F.user_id Where F.friend_id = %s""", (user_id,))
+    follower_query = curs.fetchall()
+
+    followers = ""
+
+    for follower in follower_query:
+        followers += f"{follower[0]}\n\t"
+
+
+
+    curs.execute("""Select B.title, R.rating from p320_07."Book" B INNER JOIN p320_07."Rates" R ON
+                    B.book_id = R.book_id where R.user_id = %s ORDER BY R.rating DESC""", (user_id,))
+    top_books_query = curs.fetchall()
+
+    top_ten_books = ""
+    i = 1
+    for books in top_books_query:
+        if i <= 10:
+            top_ten_books += f"\t{i}: {books[0]}\n"
+            i += 1
+
+    print(f"You have {collection_number} collections")
+    print(f"Your are following:\n\t{following.strip()}")
+    print(f"You are followed by:\n\t{followers.strip()}")
+    print(f"Your top ten books are:\n\t{top_ten_books.strip()}")
+
+
 
 def finduser(conn, curs):
 
@@ -200,7 +253,7 @@ def finduser(conn, curs):
     print('Username\t\tEmail')
     for user in data: print(f'{user[0]}\t\t{user[1]}')
 
-def friends(conn, curs, tokens, user_id):
+def friends(conn, curs, user_id):
     curs.execute("""SELECT username FROM p320_07."Reader" WHERE user_id IN 
                 (SELECT friend_id FROM p320_07."Friendship" WHERE user_id = %s);""", (user_id,))
     data = curs.fetchall()
@@ -229,7 +282,7 @@ def create_collection(conn, curs, user_id):
 
     print(f"Collection was successfully created!")
 
-    
+
 def add_to_collection(conn, curs, user_id):
     # get book user wants to add and the name of the collection,
     add_book = int(input("Enter the bookID number: "))
@@ -312,7 +365,7 @@ def delete_from_collection(conn, curs, user_id):
     # will only commit if everything passes
     conn.commit()
 
-    
+
 def delete_collection(conn, curs, user_id):
     # gets the name of the collection the user wishes to delete
     name_of_collection = input("Enter the collection name: ")
@@ -401,7 +454,7 @@ def edit_collection_name(conn, curs, user_id):
     if not updated:
         print("You do not own this collection or it does not exist!")
 
-        
+
 def read(conn, curs, user_id):
     # Invalid if the inputted number of tokens is incorrect
 
@@ -423,7 +476,7 @@ def read(conn, curs, user_id):
         print('Invalid entry; must say "start" or "stop" as the third token')
         return -1
 
-      
+
 def start_reading(conn, curs, book_id, user_id):
     start_page = input("Enter the page you are starting on: ")
 
@@ -466,7 +519,7 @@ def start_reading(conn, curs, book_id, user_id):
     conn.commit()
     print("Started reading session at page %s" % start_page)
 
-    
+
 def stop_reading(conn, curs, book_id, user_id):
     end_page = input("enter the page number you finished on: ")
 
@@ -497,7 +550,7 @@ def stop_reading(conn, curs, book_id, user_id):
     if end_int < 0:
         print('Invalid entry; page must be positive')
         return -1
-      
+
     # Valid, update the reading session with new ending values
     end_time = datetime.datetime.now()
     curs.execute("""UPDATE p320_07."Reads"
@@ -507,7 +560,7 @@ def stop_reading(conn, curs, book_id, user_id):
     conn.commit()
     print("Stopped reading session, pages %s->%s" % (start_int, end_int))
 
-    
+
 def read_random(conn, curs, user_id):
     # Invalid if collection id is not an integer
     collection_id = input("enter the collection id: ")
@@ -566,7 +619,7 @@ def read_random(conn, curs, user_id):
 
     conn.commit()
 
-    
+
 def rate(conn, curs, user_id):
     # Invalid if the inputted number of tokens is incorrect
 
@@ -615,9 +668,9 @@ def rate(conn, curs, user_id):
     conn.commit()
 
 
-def search(curs, tokens):
-    filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre')
-    keyword = input("add keyword(s)")
+def search(curs):
+    filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre: ')
+    keyword = input("add keyword(s): ")
 
     match filter:
 
@@ -664,9 +717,6 @@ def search(curs, tokens):
             first_name = keyword.split()[0]
             last_name = ''
 
-            if len(tokens) > 3:
-                last_name = keyword.split()[1]
-
             curs.execute(f"""SELECT DISTINCT  A.book_id , B.title, R.date 
                         FROM p320_07."Writes" A JOIN p320_07."Contributor" C 
                             ON A.contributor_id = C.contributor_id JOIN p320_07."Book" B
@@ -696,8 +746,6 @@ def search(curs, tokens):
             first_name = keyword.split()[0]
             last_name = ''
 
-            if len(tokens) > 3:
-                last_name = keyword.split()[1]
 
             curs.execute(f"""SELECT P.book_id, B.title, R.date FROM p320_07."Publishes" P 
                             INNER JOIN p320_07."Contributor" C
