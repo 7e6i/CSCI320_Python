@@ -1,7 +1,7 @@
 import psycopg2
 from sshtunnel import SSHTunnelForwarder
 import datetime
-
+import hashlib
 
 def connect_to_db(username, password):
     server = SSHTunnelForwarder(('starbug.cs.rit.edu', 22),
@@ -93,12 +93,17 @@ def makeaccount(conn, curs):
     next_id = data[0][0] + 1
     current_date = datetime.datetime.now()
 
+    salt = "wtf is pdm"
+    salted_pass = password+salt
+    hashed = hashlib.md5(salted_pass.encode()).hexdigest()
+
+
     # print(username, password, email, fname, lname, next_id)
 
     curs.execute("""INSERT INTO p320_07."Reader"
         (user_id, username, password, email, first_name, last_name, created_date, last_access)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
-                 (next_id, username, password, email, fname, lname, current_date, current_date))
+                 (next_id, username, hashed, email, fname, lname, current_date, current_date))
 
     conn.commit()
     print("New account created and logged in")
@@ -116,7 +121,11 @@ def login(conn, curs):
     for user in data:
         users[user[1]] = [user[0], user[2]]
 
-    if username not in users or users[username][1] != password:
+    salt = "wtf is pdm"
+    salted_pass = password + salt
+    hashed = hashlib.md5(salted_pass.encode()).hexdigest()
+
+    if username not in users or users[username][1] != hashed:
         print("Username doesn't exist or wrong password")
         return -1
 
