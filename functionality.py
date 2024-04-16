@@ -200,47 +200,96 @@ def removefriend(conn, curs, passed_user_id):
 
 def display_user_profile(curs, user_id):
 
-    curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
-                 (user_id,))
-    collection_number_query = curs.fetchall()
-    collection_number = collection_number_query[0][0]
+    choose_profile = input("Do you want to look at your profile (1) or someone else's (2): ")
 
-    #ERROR ON QUERY!!!!!!!!! CHECK STATEMENT
-    curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
-                    ON R.user_id = F.friend_id Where F.user_id = %s""", (user_id,))
-    following_query = curs.fetchall()
+    if choose_profile == "1":
+        curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
+                     (user_id,))
+        collection_number_query = curs.fetchall()
+        collection_number = collection_number_query[0][0]
 
-    following = ""
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                        ON R.user_id = F.friend_id Where F.user_id = %s""", (user_id,))
+        following_query = curs.fetchall()
+        following = ""
 
-    for follow in following_query:
-        following += f"{follow[0]}\n\t"
+        for follow in following_query:
+            following += f"{follow[0]}\n\t"
 
-    curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
-                        ON R.user_id = F.user_id Where F.friend_id = %s""", (user_id,))
-    follower_query = curs.fetchall()
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                            ON R.user_id = F.user_id Where F.friend_id = %s""", (user_id,))
+        follower_query = curs.fetchall()
+        followers = ""
 
-    followers = ""
+        for follower in follower_query:
+            followers += f"{follower[0]}\n\t"
 
-    for follower in follower_query:
-        followers += f"{follower[0]}\n\t"
+        curs.execute("""Select B.title, R.rating from p320_07."Book" B INNER JOIN p320_07."Rates" R ON
+                        B.book_id = R.book_id where R.user_id = %s ORDER BY R.rating DESC""", (user_id,))
+        top_books_query = curs.fetchall()
+        top_ten_books = ""
+        i = 1
+        for books in top_books_query:
+            if i <= 10:
+                top_ten_books += f"\t{i}: {books[0]}\n"
+                i += 1
 
+        print(f"You have {collection_number} collections")
+        print(f"Your are following:\n\t{following.strip()}")
+        print(f"You are followed by:\n\t{followers.strip()}")
+        print(f"Your top ten books are:\n\t{top_ten_books.strip()}")
 
+    elif choose_profile == "2":
+        profile_username = input("enter the username if the profile you want to look at: ")
+        profile_id = -1
 
-    curs.execute("""Select B.title, R.rating from p320_07."Book" B INNER JOIN p320_07."Rates" R ON
-                    B.book_id = R.book_id where R.user_id = %s ORDER BY R.rating DESC""", (user_id,))
-    top_books_query = curs.fetchall()
+        curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
+        reader_data = curs.fetchall()
+        for reader in reader_data:
+            if profile_username == reader[1]: profile_id = reader[0]
+        if profile_id == -1:
+            print("There is no user with that username")
+            return
 
-    top_ten_books = ""
-    i = 1
-    for books in top_books_query:
-        if i <= 10:
-            top_ten_books += f"\t{i}: {books[0]}\n"
-            i += 1
+        curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
+                    (profile_id,))
+        collection_number_query = curs.fetchall()
+        collection_number = collection_number_query[0][0]
 
-    print(f"You have {collection_number} collections")
-    print(f"Your are following:\n\t{following.strip()}")
-    print(f"You are followed by:\n\t{followers.strip()}")
-    print(f"Your top ten books are:\n\t{top_ten_books.strip()}")
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                                ON R.user_id = F.friend_id Where F.user_id = %s""", (profile_id,))
+        following_query = curs.fetchall()
+        following = ""
+
+        for follow in following_query:
+            following += f"{follow[0]}\n\t"
+
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                                    ON R.user_id = F.user_id Where F.friend_id = %s""", (profile_id,))
+        follower_query = curs.fetchall()
+        followers = ""
+
+        for follower in follower_query:
+            followers += f"{follower[0]}\n\t"
+
+        curs.execute("""Select B.title, R.rating from p320_07."Book" B INNER JOIN p320_07."Rates" R ON
+                                B.book_id = R.book_id where R.user_id = %s ORDER BY R.rating DESC""", (profile_id,))
+        top_books_query = curs.fetchall()
+        top_ten_books = ""
+        i = 1
+        for books in top_books_query:
+            if i <= 10:
+                top_ten_books += f"\t{i}: {books[0]}\n"
+                i += 1
+
+        print(f"{profile_username} has {collection_number} collections")
+        print(f"{profile_username} is following:\n\t{following.strip()}")
+        print(f"{profile_username} is followed by:\n\t{followers.strip()}")
+        print(f"{profile_username}'s top ten books are:\n\t{top_ten_books.strip()}")
+
+    else:
+        print("you must input at 1 or a 2")
+
 
 
 
