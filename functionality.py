@@ -230,7 +230,7 @@ def create_collection(conn, curs, user_id):
 
     print(f"Collection was successfully created!")
 
-    
+
 def add_to_collection(conn, curs, user_id):
     # get book user wants to add and the name of the collection,
     add_book = int(input("Enter the bookID number: "))
@@ -313,7 +313,7 @@ def delete_from_collection(conn, curs, user_id):
     # will only commit if everything passes
     conn.commit()
 
-    
+
 def delete_collection(conn, curs, user_id):
     # gets the name of the collection the user wishes to delete
     name_of_collection = input("Enter the collection name: ")
@@ -402,7 +402,7 @@ def edit_collection_name(conn, curs, user_id):
     if not updated:
         print("You do not own this collection or it does not exist!")
 
-        
+
 def read(conn, curs, user_id):
     # Invalid if the inputted number of tokens is incorrect
 
@@ -424,7 +424,7 @@ def read(conn, curs, user_id):
         print('Invalid entry; must say "start" or "stop" as the third token')
         return -1
 
-      
+
 def start_reading(conn, curs, book_id, user_id):
     start_page = input("Enter the page you are starting on: ")
 
@@ -467,7 +467,7 @@ def start_reading(conn, curs, book_id, user_id):
     conn.commit()
     print("Started reading session at page %s" % start_page)
 
-    
+
 def stop_reading(conn, curs, book_id, user_id):
     end_page = input("enter the page number you finished on: ")
 
@@ -498,7 +498,7 @@ def stop_reading(conn, curs, book_id, user_id):
     if end_int < 0:
         print('Invalid entry; page must be positive')
         return -1
-      
+
     # Valid, update the reading session with new ending values
     end_time = datetime.datetime.now()
     curs.execute("""UPDATE p320_07."Reads"
@@ -508,7 +508,7 @@ def stop_reading(conn, curs, book_id, user_id):
     conn.commit()
     print("Stopped reading session, pages %s->%s" % (start_int, end_int))
 
-    
+
 def read_random(conn, curs, user_id):
     # Invalid if collection id is not an integer
     collection_id = input("enter the collection id: ")
@@ -567,7 +567,7 @@ def read_random(conn, curs, user_id):
 
     conn.commit()
 
-    
+
 def rate(conn, curs, user_id):
     # Invalid if the inputted number of tokens is incorrect
 
@@ -616,6 +616,15 @@ def rate(conn, curs, user_id):
     conn.commit()
 
 def foryou(conn, curs, user_id):
+    curs.execute("""
+                        SELECT book_id
+                        FROM p320_07."Reads"
+                        WHERE user_id = %s
+                     """, (user_id,))
+    books_read = curs.fetchall()
+    if not books_read:
+        print('Invalid entry; you must read a book first')
+        return -1
     # Find genres from books in read history
     curs.execute("""
         SELECT g.name, g.genre_id, COUNT(*) AS genre_count
@@ -633,24 +642,74 @@ def foryou(conn, curs, user_id):
 
     top_genre_id = top_genres[0][1]
     curs.execute("""
-                SELECT b.title, AVG(r.rating) AS avg_rating
-                FROM p320_07."Book" b
-                INNER JOIN p320_07."Rates" r ON b.book_id = r.book_id
-                WHERE b.genre_id = %s
-                GROUP BY b.title
-                ORDER BY avg_rating DESC
-                LIMIT 30
-            """, (top_genre_id,))
-
-    top_books = curs.fetchall()
-    print(f"Here are some of the top rated {top_genres[0][0]} books:")
-    if top_books:
+                    SELECT rd.user_id, COUNT(*) AS session_count
+                    FROM p320_07."Reader" rd
+                    INNER JOIN p320_07."Reads" r ON rd.user_id = r.user_id
+                    INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+                    WHERE b.genre_id = %s
+                    GROUP BY rd.user_id
+                    ORDER BY session_count DESC
+                    LIMIT 5
+                """, (top_genre_id,))
+    similar_users = curs.fetchall()
+    print(f"Here are some users that like {top_genres[0][0]} books:")
+    if similar_users:
         # Pleasant string formatting
         i = 1
-        max_title_length = max(len(b[0]) for b in top_books)
-        for book in top_books:
-            print(f"#{i:2} - {book[0]:{max_title_length}} ({book[1]:.2f} stars)")
-            i+=1
+        for user in similar_users:
+            print(f"User id {user[0]}: {user[1]} times read")
+            i += 1
+
+    # find all books that are in common between those users
+
+    from collections import defaultdict
+
+    # Initialize a dictionary to count how many times each book has been read by similar users
+    book_read_counts = defaultdict(int)
+
+    # Loop over similar users and collect books they've read in the favorite genre
+    for user in similar_users:
+        user_id_temp = user[0]  # Assuming the first element is the user ID
+        curs.execute("""
+                        SELECT b.title, b.book_id
+                        FROM p320_07."Book" b
+                        INNER JOIN p320_07."Reads" r ON b.book_id = r.book_id
+                        WHERE r.user_id = %s
+                     """, (user_id_temp,))
+        books = curs.fetchall()
+        for book in books:
+            # Increment the count for each book read by a similar user
+            book_read_counts[book[1]] += 1
+
+    # Filter out books the current user has already read
+    curs.execute("""
+                    SELECT b.title, b.book_id
+                    FROM p320_07."Book" b
+                    INNER JOIN p320_07."Reads" r ON b.book_id = r.book_id
+                    WHERE r.user_id = %s
+                 """, (user_id,))
+    books_read_by_current_user = {book[0] for book in curs.fetchall()}
+
+    common_unread_books = {book_id
+                           for book_id, count in book_read_counts.items()
+                           if book_id not in books_read_by_current_user}
+
+    # Fetch details of these common, unread books
+    if common_unread_books:
+        placeholders = ', '.join(['%s'] * len(common_unread_books))
+        curs.execute(f"""
+                        SELECT title, book_id
+                        FROM p320_07."Book"
+                        WHERE book_id IN ({placeholders})
+                     """, tuple(common_unread_books))
+        recommended_books = curs.fetchall()
+
+        # Display the recommended books
+        print(f"Here are books that users similar to you like:")
+        for book in recommended_books:
+            print(f"- {book[0]} (Book ID: {book[1]})")
+    else:
+        print("No common unread books found among users with similar tastes.")
 
 def recommend(conn, curs, user_id):
     # Display most popular books overall first
