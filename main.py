@@ -114,12 +114,6 @@ def main():
                 print("Not logged in")
             else:
                 recommend(conn,curs,user_id)
-
-        elif command == "foryou":
-            if user_id<0:
-                print("Not logged in")
-            else:
-                foryou(conn,curs,user_id)
                 
         elif command == "search":
             search(curs)
