@@ -1,6 +1,8 @@
 import psycopg2
 from sshtunnel import SSHTunnelForwarder
 import datetime
+import random
+from collections import defaultdict
 
 
 def connect_to_db(username, password):
@@ -638,8 +640,6 @@ def foryou(conn, curs, user_id):
 
     top_genres = curs.fetchall()
 
-    print(f"It seems like you read {top_genres[0][0]} books a lot!\n")
-
     top_genre_id = top_genres[0][1]
     curs.execute("""
                     SELECT rd.user_id, COUNT(*) AS session_count
@@ -652,17 +652,6 @@ def foryou(conn, curs, user_id):
                     LIMIT 5
                 """, (top_genre_id,))
     similar_users = curs.fetchall()
-    print(f"Here are some users that like {top_genres[0][0]} books:")
-    if similar_users:
-        # Pleasant string formatting
-        i = 1
-        for user in similar_users:
-            print(f"User id {user[0]}: {user[1]} times read")
-            i += 1
-
-    # find all books that are in common between those users
-
-    from collections import defaultdict
 
     # Initialize a dictionary to count how many times each book has been read by similar users
     book_read_counts = defaultdict(int)
@@ -704,9 +693,12 @@ def foryou(conn, curs, user_id):
                      """, tuple(common_unread_books))
         recommended_books = curs.fetchall()
 
+        num_books_to_display = min(5, len(recommended_books))
+        books_to_display = random.sample(recommended_books, num_books_to_display)
+
         # Display the recommended books
         print(f"Here are books that users similar to you like:")
-        for book in recommended_books:
+        for book in books_to_display:
             print(f"- {book[0]} (Book ID: {book[1]})")
     else:
         print("No common unread books found among users with similar tastes.")
