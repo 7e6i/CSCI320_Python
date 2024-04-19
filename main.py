@@ -10,6 +10,7 @@ def main():
     print('Welcome to the Library, how can we help? ("help" for options)')
     user_id = -1
     while True:
+
         user_in = input('>').strip()
         tokens = user_in.split(" ")
         command = tokens[0]
@@ -122,6 +123,12 @@ def main():
                 
         elif command == "search":
             search(curs)
+
+        elif command == "profile" and user_id != -1:
+            if user_id != -1:
+                display_user_profile(curs, user_id)
+            else:
+                print("Not logged in")
             
         else:
             print('Invalid command')

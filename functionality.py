@@ -3,7 +3,7 @@ from sshtunnel import SSHTunnelForwarder
 import datetime
 import random
 from collections import defaultdict
-
+import hashlib
 
 def connect_to_db(username, password):
     server = SSHTunnelForwarder(('starbug.cs.rit.edu', 22),
@@ -43,6 +43,8 @@ def help(user_id):
               '========= ACCOUNTS =========\n'
               'makeaccount: makes a new account\n'
               'login: logs in if username and password match database entry\n'
+              '========= BOOKS =========\n'
+              'search\n'
               )
     else:
         print('Below are valid commands and their uses\n'
@@ -53,10 +55,12 @@ def help(user_id):
               'makeaccount: makes a new account\n'
               'login: logs in if username and password match database entry\n'
               'logout: logs out of current account\n'
+              
               '========= FRIENDS =========\n'
               'addfriend: adds user to friends list\n'
               'removefriend: removes friend from friends list\n'
               'finduser: returns users with similar email\n'
+              
               '========= COLLECTIONS =========\n'
               'createcollection: creates a collection with a name\n'
               'deletecollection: deletes entered collection from database\n'
@@ -64,6 +68,7 @@ def help(user_id):
               'editcollectionname: edits entered collection name to entered new name\n'
               'addbook: adds a book to the collection\n'
               'removebook: removes a book from a collection\n'
+              
               '========= BOOKS =========\n'
               'search\n'
               'read: start or stop a book reading session given page number\n'
@@ -71,6 +76,9 @@ def help(user_id):
               'rate: rate a book between 1 and 5 stars\n'
               'recommend: gives various types of recommendations on books\n'
               'foryou: finds books that suit your reading history'
+              
+              '======== USER =========\n'
+              'profile: see user profile with top books, number of collection, and friends'
               )
 
 def makeaccount(conn, curs):
@@ -96,12 +104,17 @@ def makeaccount(conn, curs):
     next_id = data[0][0] + 1
     current_date = datetime.datetime.now()
 
+    salt = "wtf is pdm"
+    salted_pass = password+salt
+    hashed = hashlib.md5(salted_pass.encode()).hexdigest()
+
+
     # print(username, password, email, fname, lname, next_id)
 
     curs.execute("""INSERT INTO p320_07."Reader"
         (user_id, username, password, email, first_name, last_name, created_date, last_access)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
-                 (next_id, username, password, email, fname, lname, current_date, current_date))
+                 (next_id, username, hashed, email, fname, lname, current_date, current_date))
 
     conn.commit()
     print("New account created and logged in")
@@ -119,7 +132,11 @@ def login(conn, curs):
     for user in data:
         users[user[1]] = [user[0], user[2]]
 
-    if username not in users or users[username][1] != password:
+    salt = "wtf is pdm"
+    salted_pass = password + salt
+    hashed = hashlib.md5(salted_pass.encode()).hexdigest()
+
+    if username not in users or users[username][1] != hashed:
         print("Username doesn't exist or wrong password")
         return -1
 
@@ -193,6 +210,100 @@ def removefriend(conn, curs, passed_user_id):
 
     print("No friend was found")
 
+def display_user_profile(curs, user_id):
+
+    choose_profile = input("Do you want to look at your profile (1) or someone else's (2): ")
+
+    if choose_profile == "1":
+        curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
+                     (user_id,))
+        collection_number_query = curs.fetchall()
+        collection_number = collection_number_query[0][0]
+
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                        ON R.user_id = F.friend_id Where F.user_id = %s""", (user_id,))
+        following_query = curs.fetchall()
+        following = ""
+
+        for follow in following_query:
+            following += f"{follow[0]}\n\t"
+
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                            ON R.user_id = F.user_id Where F.friend_id = %s""", (user_id,))
+        follower_query = curs.fetchall()
+        followers = ""
+
+        for follower in follower_query:
+            followers += f"{follower[0]}\n\t"
+
+        curs.execute("""Select B.title, R.rating from p320_07."Book" B INNER JOIN p320_07."Rates" R ON
+                        B.book_id = R.book_id where R.user_id = %s ORDER BY R.rating DESC""", (user_id,))
+        top_books_query = curs.fetchall()
+        top_ten_books = ""
+        i = 1
+        for books in top_books_query:
+            if i <= 10:
+                top_ten_books += f"\t{i}: {books[0]}\n"
+                i += 1
+
+        print(f"You have {collection_number} collections")
+        print(f"Your are following:\n\t{following.strip()}")
+        print(f"You are followed by:\n\t{followers.strip()}")
+        print(f"Your top ten books are:\n\t{top_ten_books.strip()}")
+
+    elif choose_profile == "2":
+        profile_username = input("enter the username if the profile you want to look at: ")
+        profile_id = -1
+
+        curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
+        reader_data = curs.fetchall()
+        for reader in reader_data:
+            if profile_username == reader[1]: profile_id = reader[0]
+        if profile_id == -1:
+            print("There is no user with that username")
+            return
+
+        curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
+                    (profile_id,))
+        collection_number_query = curs.fetchall()
+        collection_number = collection_number_query[0][0]
+
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                                ON R.user_id = F.friend_id Where F.user_id = %s""", (profile_id,))
+        following_query = curs.fetchall()
+        following = ""
+
+        for follow in following_query:
+            following += f"{follow[0]}\n\t"
+
+        curs.execute("""Select R.username from p320_07."Reader" R Join p320_07."Friendship" F
+                                    ON R.user_id = F.user_id Where F.friend_id = %s""", (profile_id,))
+        follower_query = curs.fetchall()
+        followers = ""
+
+        for follower in follower_query:
+            followers += f"{follower[0]}\n\t"
+
+        curs.execute("""Select B.title, R.rating from p320_07."Book" B INNER JOIN p320_07."Rates" R ON
+                                B.book_id = R.book_id where R.user_id = %s ORDER BY R.rating DESC""", (profile_id,))
+        top_books_query = curs.fetchall()
+        top_ten_books = ""
+        i = 1
+        for books in top_books_query:
+            if i <= 10:
+                top_ten_books += f"\t{i}: {books[0]}\n"
+                i += 1
+
+        print(f"{profile_username} has {collection_number} collections")
+        print(f"{profile_username} is following:\n\t{following.strip()}")
+        print(f"{profile_username} is followed by:\n\t{followers.strip()}")
+        print(f"{profile_username}'s top ten books are:\n\t{top_ten_books.strip()}")
+
+    else:
+        print("you must input at 1 or a 2")
+
+
+
 
 def finduser(conn, curs):
 
@@ -203,7 +314,7 @@ def finduser(conn, curs):
     print('Username\t\tEmail')
     for user in data: print(f'{user[0]}\t\t{user[1]}')
 
-def friends(conn, curs, tokens, user_id):
+def friends(conn, curs, user_id):
     curs.execute("""SELECT username FROM p320_07."Reader" WHERE user_id IN 
                 (SELECT friend_id FROM p320_07."Friendship" WHERE user_id = %s);""", (user_id,))
     data = curs.fetchall()
@@ -784,9 +895,9 @@ def recommend(conn, curs, user_id):
             print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
             i += 1
 
-def search(curs, tokens):
-    filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre')
-    keyword = input("add keyword(s)")
+def search(curs):
+    filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre: ')
+    keyword = input("add keyword(s): ")
 
     match filter:
 
@@ -833,9 +944,6 @@ def search(curs, tokens):
             first_name = keyword.split()[0]
             last_name = ''
 
-            if len(tokens) > 3:
-                last_name = keyword.split()[1]
-
             curs.execute(f"""SELECT DISTINCT  A.book_id , B.title, R.date 
                         FROM p320_07."Writes" A JOIN p320_07."Contributor" C 
                             ON A.contributor_id = C.contributor_id JOIN p320_07."Book" B
@@ -865,8 +973,6 @@ def search(curs, tokens):
             first_name = keyword.split()[0]
             last_name = ''
 
-            if len(tokens) > 3:
-                last_name = keyword.split()[1]
 
             curs.execute(f"""SELECT P.book_id, B.title, R.date FROM p320_07."Publishes" P 
                             INNER JOIN p320_07."Contributor" C
