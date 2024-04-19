@@ -1,6 +1,8 @@
 import psycopg2
 from sshtunnel import SSHTunnelForwarder
 import datetime
+import random
+from collections import defaultdict
 import hashlib
 
 def connect_to_db(username, password):
@@ -49,7 +51,6 @@ def help(user_id):
               '========= BASIC =========\n'
               'help: displays this information regardless of menu\n'
               'quit: exits the program regardless of menu\n'
-              
               '========= ACCOUNTS =========\n'
               'makeaccount: makes a new account\n'
               'login: logs in if username and password match database entry\n'
@@ -71,8 +72,10 @@ def help(user_id):
               '========= BOOKS =========\n'
               'search\n'
               'read: start or stop a book reading session given page number\n'
-              'read: random book: start reading a random book in a collection at page 0\n'
+              'read random book: start reading a random book in a collection at page 0\n'
               'rate: rate a book between 1 and 5 stars\n'
+              'recommend: gives various types of recommendations on books\n'
+              'foryou: finds books that suit your reading history'
               
               '======== USER =========\n'
               'profile: see user profile with top books, number of collection, and friends'
@@ -725,6 +728,172 @@ def rate(conn, curs, user_id):
         print("Updated rating of book %s to %s stars" % (book_int, rating_int))
     conn.commit()
 
+def foryou(conn, curs, user_id):
+    curs.execute("""
+                        SELECT book_id
+                        FROM p320_07."Reads"
+                        WHERE user_id = %s
+                     """, (user_id,))
+    books_read = curs.fetchall()
+    if not books_read:
+        print('Invalid entry; you must read a book first')
+        return -1
+    # Find genres from books in read history
+    curs.execute("""
+        SELECT g.name, g.genre_id, COUNT(*) AS genre_count
+        FROM p320_07."Reads" r
+        INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+        INNER JOIN p320_07."Genre" g ON b.genre_id = g.genre_id
+        WHERE r.user_id = %s
+        GROUP BY g.name, g.genre_id
+        ORDER BY genre_count DESC
+    """,(user_id,))
+
+    top_genres = curs.fetchall()
+
+    top_genre_id = top_genres[0][1]
+    curs.execute("""
+                    SELECT rd.user_id, COUNT(*) AS session_count
+                    FROM p320_07."Reader" rd
+                    INNER JOIN p320_07."Reads" r ON rd.user_id = r.user_id
+                    INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+                    WHERE b.genre_id = %s
+                    GROUP BY rd.user_id
+                    ORDER BY session_count DESC
+                    LIMIT 5
+                """, (top_genre_id,))
+    similar_users = curs.fetchall()
+
+    # Initialize a dictionary to count how many times each book has been read by similar users
+    book_read_counts = defaultdict(int)
+
+    # Loop over similar users and collect books they've read in the favorite genre
+    for user in similar_users:
+        user_id_temp = user[0]  # Assuming the first element is the user ID
+        curs.execute("""
+                        SELECT b.title, b.book_id
+                        FROM p320_07."Book" b
+                        INNER JOIN p320_07."Reads" r ON b.book_id = r.book_id
+                        WHERE r.user_id = %s
+                     """, (user_id_temp,))
+        books = curs.fetchall()
+        for book in books:
+            # Increment the count for each book read by a similar user
+            book_read_counts[book[1]] += 1
+
+    # Filter out books the current user has already read
+    curs.execute("""
+                    SELECT b.title, b.book_id
+                    FROM p320_07."Book" b
+                    INNER JOIN p320_07."Reads" r ON b.book_id = r.book_id
+                    WHERE r.user_id = %s
+                 """, (user_id,))
+    books_read_by_current_user = {book[0] for book in curs.fetchall()}
+
+    common_unread_books = {book_id
+                           for book_id, count in book_read_counts.items()
+                           if book_id not in books_read_by_current_user}
+
+    # Fetch details of these common, unread books
+    if common_unread_books:
+        placeholders = ', '.join(['%s'] * len(common_unread_books))
+        curs.execute(f"""
+                        SELECT title, book_id
+                        FROM p320_07."Book"
+                        WHERE book_id IN ({placeholders})
+                     """, tuple(common_unread_books))
+        recommended_books = curs.fetchall()
+
+        num_books_to_display = min(5, len(recommended_books))
+        books_to_display = random.sample(recommended_books, num_books_to_display)
+
+        # Display the recommended books
+        print(f"Here are books that users similar to you like:")
+        for book in books_to_display:
+            print(f"- {book[0]} (Book ID: {book[1]})")
+    else:
+        print("No common unread books found among users with similar tastes.")
+
+def recommend(conn, curs, user_id):
+    # Display most popular books overall first
+    curs.execute("""
+        SELECT b.title, b.book_id, COUNT(*) AS session_count
+        FROM p320_07."Reads" r
+        INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+        WHERE r.end_time > CURRENT_DATE - INTERVAL '90' day
+        GROUP BY b.title, b.book_id
+        ORDER BY session_count DESC
+        LIMIT 20
+    """)
+
+    top_books = curs.fetchall()
+
+    print("Top 20 books in the last 90 days:")
+    # Print all top books
+    if top_books:
+        # Pleasant string formatting
+        i = 1
+        max_title_length = max(len(b[0]) for b in top_books)
+        max_id_length = max(len(str(b[1])) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
+            i+=1
+
+    # Display most popular books among people following me
+    curs.execute("""
+        SELECT b.title, b.book_id, COUNT(*) AS session_count
+        FROM p320_07."Friendship" f
+        INNER JOIN p320_07."Reads" r ON f.user_id = r.user_id
+        INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
+        WHERE f.friend_id = %s
+        AND r.end_time > CURRENT_DATE - INTERVAL '90' day
+        GROUP BY b.title, b.book_id
+        ORDER BY session_count DESC
+        LIMIT 20
+    """,(user_id,))
+
+    top_books = curs.fetchall()
+
+    print("Top 20 books among users following you:")
+
+    # Print more top books
+    if top_books:
+        # Pleasant string formatting
+        i = 1
+        max_title_length = max(len(b[0]) for b in top_books)
+        max_id_length = max(len(str(b[1])) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
+            i+=1
+
+    # Display most popular newly released books during this calendar month
+    curs.execute("""
+            SELECT b.title, b.book_id, COUNT(*) AS session_count
+            FROM (
+                SELECT DISTINCT rel.book_id
+                FROM p320_07."Released" rel
+                WHERE EXTRACT(MONTH FROM rel.date) = EXTRACT(MONTH FROM CURRENT_DATE)
+                AND EXTRACT(YEAR FROM rel.date) = EXTRACT(YEAR FROM CURRENT_DATE)
+            ) AS distinct_books
+            INNER JOIN p320_07."Reads" r ON distinct_books.book_id = r.book_id
+            INNER JOIN p320_07."Book" b ON distinct_books.book_id = b.book_id
+            GROUP BY b.title, b.book_id
+            ORDER BY session_count DESC
+            LIMIT 5
+        """)
+
+    top_books = curs.fetchall()
+
+    print("Top 5 newly released books in the current calendar month:")
+    # Print all top books
+    if top_books:
+        # Pleasant string formatting
+        i = 1
+        max_title_length = max(len(b[0]) for b in top_books)
+        max_id_length = max(len(str(b[1])) for b in top_books)
+        for book in top_books:
+            print(f"#{i:2} - {book[1]:{max_id_length}}: {book[0]:{max_title_length}} ({book[2]} times read)")
+            i += 1
 
 def search(curs):
     filter = input('search for a book by (t)itle, (r)elease date, (a)uthors, (p)ublisher, (g)enre: ')
