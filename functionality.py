@@ -149,7 +149,7 @@ def login(conn, curs):
 
 def addfriend(conn, curs, passed_user_id):
 
-    friend_username = input("enter the username you want to follow: ")
+    friend_username = input("Enter the username you want to follow: ")
     friend_id = -1
 
     curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
@@ -159,7 +159,7 @@ def addfriend(conn, curs, passed_user_id):
 
     if friend_id == -1:
         print("There is no user with that username")
-        return
+        return -1
 
     curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
     friend_data = curs.fetchall()
@@ -180,7 +180,7 @@ def addfriend(conn, curs, passed_user_id):
 
 def removefriend(conn, curs, passed_user_id):
 
-    friend_username = input("enter the username of the friend you want to delete: ")
+    friend_username = input("Enter the username of the friend you want to delete: ")
     friend_id_input = -1
 
     curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
@@ -190,7 +190,7 @@ def removefriend(conn, curs, passed_user_id):
 
     if friend_id_input == -1:
         print("There is no user with that username")
-        return
+        return -1
 
     curs.execute("""SELECT user_id, friend_id FROM p320_07."Friendship";""")
     friend_data = curs.fetchall()
@@ -251,7 +251,7 @@ def display_user_profile(curs, user_id):
         print(f"Your top ten books are:\n\t{top_ten_books.strip()}")
 
     elif choose_profile == "2":
-        profile_username = input("enter the username if the profile you want to look at: ")
+        profile_username = input("Enter the username of the profile you want to look at: ")
         profile_id = -1
 
         curs.execute("""SELECT user_id, username FROM p320_07."Reader";""")
@@ -260,7 +260,7 @@ def display_user_profile(curs, user_id):
             if profile_username == reader[1]: profile_id = reader[0]
         if profile_id == -1:
             print("There is no user with that username")
-            return
+            return -1
 
         curs.execute("""SELECT COUNT(*) From p320_07."Bookshelf" B WHERE B.user_id = %s""",
                     (profile_id,))
@@ -292,11 +292,13 @@ def display_user_profile(curs, user_id):
             if i <= 10:
                 top_ten_books += f"\t{i}: {books[0]}\n"
                 i += 1
-
-        print(f"{profile_username} has {collection_number} collections")
+        print(f"=========================================")
+        print(f"{profile_username}'s PROFILE")
+        print(f"=========================================")
+        print(f"\n{profile_username} has {collection_number} collections")
         print(f"{profile_username} is following:\n\t{following.strip()}")
         print(f"{profile_username} is followed by:\n\t{followers.strip()}")
-        print(f"{profile_username}'s top ten books are:\n\t{top_ten_books.strip()}")
+        print(f"{profile_username}'s top books (capped at 10) are:\n\t{top_ten_books.strip()}")
 
     else:
         print("you must input at 1 or a 2")
@@ -759,7 +761,7 @@ def foryou(conn, curs, user_id):
                     WHERE b.genre_id = %s
                     GROUP BY rd.user_id
                     ORDER BY session_count DESC
-                    LIMIT 5
+                    LIMIT 5;
                 """, (top_genre_id,))
     similar_users = curs.fetchall()
 
@@ -827,7 +829,7 @@ def recommend(conn, curs, user_id):
                 WHERE r.end_time > CURRENT_DATE - INTERVAL '90' day
                 GROUP BY b.title, b.book_id
                 ORDER BY session_count DESC
-                LIMIT 20
+                LIMIT 20;
             """)
 
             top_books = curs.fetchall()
@@ -851,10 +853,9 @@ def recommend(conn, curs, user_id):
                 INNER JOIN p320_07."Reads" r ON f.user_id = r.user_id
                 INNER JOIN p320_07."Book" b ON r.book_id = b.book_id
                 WHERE f.friend_id = %s
-                AND r.end_time > CURRENT_DATE - INTERVAL '90' day
                 GROUP BY b.title, b.book_id
                 ORDER BY session_count DESC
-                LIMIT 20
+                LIMIT 20;
             """,(user_id,))
 
             top_books = curs.fetchall()
@@ -886,7 +887,7 @@ def recommend(conn, curs, user_id):
                     INNER JOIN p320_07."Book" b ON distinct_books.book_id = b.book_id
                     GROUP BY b.title, b.book_id
                     ORDER BY session_count DESC
-                    LIMIT 5
+                    LIMIT 5;
                 """)
 
             top_books = curs.fetchall()
